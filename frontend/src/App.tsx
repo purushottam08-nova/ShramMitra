@@ -27,8 +27,9 @@ const benefits = [
 
 function App() {
   return (
-    <div>
+    <main>
       <h1>ShramMitra</h1>
+      <p>Benefits, applications and support — in one place.</p>
 
       {benefits.map((benefit) => (
         <BenefitCard
@@ -39,7 +40,7 @@ function App() {
           eligibilityStatus={benefit.eligibilityStatus}
         />
       ))}
-    </div>
+    </main>
   );
 }
 
