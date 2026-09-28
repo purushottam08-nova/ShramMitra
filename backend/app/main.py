@@ -1,7 +1,16 @@
 from fastapi import FastAPI
-from app.db.database import engine
+
+from app.api.auth import router as auth_router
+from app.db.database import Base, engine
+from app.models.user import User
+from app.models.worker_profile import WorkerProfile
+
+
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="ShramMitra API")
+
+app.include_router(auth_router)
 
 
 @app.get("/")
@@ -9,17 +18,3 @@ def root():
     return {
         "message": "ShramMitra API is running"
     }
-
-
-@app.get("/db-test")
-def db_test():
-    try:
-        with engine.connect() as connection:
-            return {
-                "message": "Database connected successfully"
-            }
-    except Exception as e:
-        return {
-            "message": "Database connection failed",
-            "error": str(e)
-        }
