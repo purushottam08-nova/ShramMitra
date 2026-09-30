@@ -5,9 +5,10 @@ from app.db.database import Base, engine
 from app.models.user import User
 from app.models.worker_profile import WorkerProfile
 from app.api.profile import router as profile_router
+from app.models.scheme import Scheme
+from app.models.scheme_rule import SchemeRule
 
 
-Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="ShramMitra API")
 
