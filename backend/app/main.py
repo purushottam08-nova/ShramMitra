@@ -7,12 +7,14 @@ from app.models.worker_profile import WorkerProfile
 from app.api.profile import router as profile_router
 from app.models.scheme import Scheme
 from app.models.scheme_rule import SchemeRule
+from app.api.schemes import router as schemes_router
 
 
 
 app = FastAPI(title="ShramMitra API")
 
 app.include_router(auth_router)
+app.include_router(schemes_router)
 app.include_router(profile_router)
 
 @app.get("/")
