@@ -1,0 +1,18 @@
+[
+  {
+    "scheme_name": "Pradhan Mantri Shram Yogi Maan-Dhan Yojana (PM-SYM)",
+    "field": "age",
+    "operator": ">=",
+    "value": "18",
+    "logical_group": 1,
+    "logical_operator": "AND"
+  },
+  {
+    "scheme_name": "Pradhan Mantri Shram Yogi Maan-Dhan Yojana (PM-SYM)",
+    "field": "age",
+    "operator": "<=",
+    "value": "40",
+    "logical_group": 1,
+    "logical_operator": "AND"
+  }
+]

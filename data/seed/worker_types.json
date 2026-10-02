@@ -1,0 +1,10 @@
+[
+  {
+    "name": "Delivery Partner",
+    "code": "DELIVERY_PARTNER"
+  },
+  {
+    "name": "Cab Driver",
+    "code": "CAB_DRIVER"
+  }
+]
