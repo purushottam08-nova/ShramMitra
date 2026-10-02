@@ -50,4 +50,28 @@ class WorkerProfile(Base):
         default=datetime.utcnow,
     )
 
+    age: Mapped[int | None] = mapped_column(
+        nullable=True,
+    )
+
+    monthly_income: Mapped[float | None] = mapped_column(
+        nullable=True,
+    )
+
+    epfo_status: Mapped[bool | None] = mapped_column(
+        nullable=True,
+    )
+
+    esic_status: Mapped[bool | None] = mapped_column(
+        nullable=True,
+    )
+
+    nps_status: Mapped[bool | None] = mapped_column(
+        nullable=True,
+    )
+
+    income_tax_payer: Mapped[bool | None] = mapped_column(
+        nullable=True,
+    )
+
     user = relationship("User", back_populates="worker_profile")

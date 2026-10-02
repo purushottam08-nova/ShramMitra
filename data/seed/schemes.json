@@ -1,0 +1,35 @@
+[
+  {
+    "name": "Pradhan Mantri Shram Yogi Maan-Dhan Yojana (PM-SYM)",
+    "description": "A voluntary and contributory pension scheme for eligible unorganised workers.",
+    "category": "PENSION",
+    "level": "CENTRAL",
+    "source_url": "https://eshram.gov.in/social-security-welfare-schemes",
+    "verification_status": "VERIFIED",
+    "last_verified_at": "2026-10-02",
+    "version": "1.0",
+    "status": "ACTIVE"
+  },
+  {
+    "name": "Pradhan Mantri Jeevan Jyoti Bima Yojana (PMJJBY)",
+    "description": "A life insurance scheme available to eligible individuals through participating bank/post office accounts.",
+    "category": "INSURANCE",
+    "level": "CENTRAL",
+    "source_url": "https://eshram.gov.in/social-security-welfare-schemes",
+    "verification_status": "VERIFIED",
+    "last_verified_at": "2026-10-02",
+    "version": "1.0",
+    "status": "ACTIVE"
+  },
+  {
+    "name": "Pradhan Mantri Suraksha Bima Yojana (PMSBY)",
+    "description": "An accident insurance scheme available to eligible individuals through participating bank/post office accounts.",
+    "category": "INSURANCE",
+    "level": "CENTRAL",
+    "source_url": "https://eshram.gov.in/social-security-welfare-schemes",
+    "verification_status": "VERIFIED",
+    "last_verified_at": "2026-10-02",
+    "version": "1.0",
+    "status": "ACTIVE"
+  }
+]

@@ -27,6 +27,12 @@ def create_profile(
         worker_type=profile_data.worker_type,
         employment_type=profile_data.employment_type,
         monthly_income_range=profile_data.monthly_income_range,
+        age=profile_data.age,
+        monthly_income=profile_data.monthly_income,
+        epfo_status=profile_data.epfo_status,
+        esic_status=profile_data.esic_status,
+        nps_status=profile_data.nps_status,
+        income_tax_payer=profile_data.income_tax_payer,
     )
 
     db.add(profile)
@@ -91,6 +97,12 @@ def update_my_profile(
     profile.worker_type = profile_data.worker_type
     profile.employment_type = profile_data.employment_type
     profile.monthly_income_range = profile_data.monthly_income_range
+    profile.age = profile_data.age
+    profile.monthly_income = profile_data.monthly_income
+    profile.epfo_status = profile_data.epfo_status
+    profile.esic_status = profile_data.esic_status
+    profile.nps_status = profile_data.nps_status
+    profile.income_tax_payer = profile_data.income_tax_payer
 
     db.commit()
     db.refresh(profile)
