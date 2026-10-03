@@ -6,6 +6,13 @@ NO_MATCH = "NO_MATCH"
 MISSING = "MISSING"
 
 
+def normalize_value(value) -> str:
+    if isinstance(value, bool):
+        return str(value).lower()
+
+    return str(value)
+
+
 def evaluate_rule(
     profile_data: dict,
     rule: SchemeRule,
@@ -21,14 +28,14 @@ def evaluate_rule(
     if rule.operator == "==":
         return (
             MATCH
-            if str(actual_value) == expected_value
+            if normalize_value(actual_value) == expected_value.lower()
             else NO_MATCH
         )
 
     if rule.operator == "!=":
         return (
             MATCH
-            if str(actual_value) != expected_value
+            if normalize_value(actual_value) != expected_value.lower()
             else NO_MATCH
         )
 
