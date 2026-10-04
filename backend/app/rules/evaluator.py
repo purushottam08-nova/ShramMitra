@@ -92,3 +92,18 @@ def evaluate_scheme(
         return MISSING
 
     return MATCH
+
+def get_missing_fields(
+    profile_data: dict,
+    rules: list[SchemeRule],
+) -> list[str]:
+
+    missing_fields = []
+
+    for rule in rules:
+        result = evaluate_rule(profile_data, rule)
+
+        if result == MISSING and rule.field not in missing_fields:
+            missing_fields.append(rule.field)
+
+    return missing_fields

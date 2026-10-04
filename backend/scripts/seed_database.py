@@ -1,11 +1,12 @@
 import json
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 from app.db.database import SessionLocal
+from app.models.scheme import Scheme
+from app.models.scheme_rule import SchemeRule
 from app.models.state import State
 from app.models.worker_type import WorkerType
-from app.models.scheme import Scheme
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -63,7 +64,6 @@ def seed_worker_types(db):
         db.add(worker_type)
 
 
-
 def seed_schemes(db):
     schemes = load_json("schemes.json")
 
@@ -94,6 +94,47 @@ def seed_schemes(db):
         db.add(scheme)
 
 
+def seed_scheme_rules(db):
+    rules = load_json("scheme_rules.json")
+
+    for rule_data in rules:
+        scheme = (
+            db.query(Scheme)
+            .filter(Scheme.name == rule_data["scheme_name"])
+            .first()
+        )
+
+        if not scheme:
+            raise ValueError(
+                f"Scheme not found: {rule_data['scheme_name']}"
+            )
+
+        existing_rule = (
+            db.query(SchemeRule)
+            .filter(
+                SchemeRule.scheme_id == scheme.id,
+                SchemeRule.field == rule_data["field"],
+                SchemeRule.operator == rule_data["operator"],
+                SchemeRule.value == rule_data["value"],
+            )
+            .first()
+        )
+
+        if existing_rule:
+            continue
+
+        rule = SchemeRule(
+            scheme_id=scheme.id,
+            field=rule_data["field"],
+            operator=rule_data["operator"],
+            value=rule_data["value"],
+            logical_group=rule_data["logical_group"],
+            logical_operator=rule_data["logical_operator"],
+        )
+
+        db.add(rule)
+
+
 def main():
     db = SessionLocal()
 
@@ -101,6 +142,7 @@ def main():
         seed_states(db)
         seed_worker_types(db)
         seed_schemes(db)
+        seed_scheme_rules(db)
 
         db.commit()
 
