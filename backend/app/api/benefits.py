@@ -5,7 +5,6 @@ from app.api.auth import get_current_user, get_db
 from app.models.scheme import Scheme
 from app.models.scheme_rule import SchemeRule
 from app.models.user import User
-from app.schemas.benefit import BenefitResponse
 from app.rules.evaluator import (
     MATCH,
     MISSING,
@@ -13,6 +12,7 @@ from app.rules.evaluator import (
     evaluate_scheme,
     get_missing_fields,
 )
+from app.schemas.benefit import BenefitResponse
 
 
 router = APIRouter(
@@ -21,7 +21,10 @@ router = APIRouter(
 )
 
 
-@router.get("/me", response_model=list[BenefitResponse])
+@router.get(
+    "/me",
+    response_model=list[BenefitResponse],
+)
 def get_my_benefits(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -53,6 +56,7 @@ def get_my_benefits(
     benefits = []
 
     for scheme in schemes:
+
         rules = (
             db.query(SchemeRule)
             .filter(SchemeRule.scheme_id == scheme.id)
@@ -62,12 +66,17 @@ def get_my_benefits(
         if not rules:
             continue
 
-        result = evaluate_scheme(profile_data, rules)
+        result = evaluate_scheme(
+            profile_data,
+            rules,
+        )
 
         if result == MATCH:
             status = "Potentially Eligible"
+
         elif result == MISSING:
             status = "Missing Information"
+
         else:
             status = "Not Matching"
 
