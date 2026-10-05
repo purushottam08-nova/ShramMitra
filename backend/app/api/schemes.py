@@ -12,10 +12,7 @@ router = APIRouter(
 )
 
 
-@router.get(
-    "",
-    response_model=list[SchemeResponse],
-)
+@router.get("", response_model=list[SchemeResponse])
 def get_schemes(
     db: Session = Depends(get_db),
 ):

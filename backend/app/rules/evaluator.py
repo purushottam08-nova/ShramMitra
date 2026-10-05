@@ -13,11 +13,7 @@ def normalize_value(value) -> str:
     return str(value)
 
 
-def evaluate_rule(
-    profile_data: dict,
-    rule: SchemeRule,
-) -> str:
-
+def evaluate_rule(profile_data: dict, rule: SchemeRule) -> str:
     actual_value = profile_data.get(rule.field)
 
     if actual_value is None:
@@ -67,16 +63,10 @@ def evaluate_rule(
             else NO_MATCH
         )
 
-    raise ValueError(
-        f"Unsupported operator: {rule.operator}"
-    )
+    raise ValueError(f"Unsupported operator: {rule.operator}")
 
 
-def evaluate_scheme(
-    profile_data: dict,
-    rules: list[SchemeRule],
-) -> str:
-
+def evaluate_scheme(profile_data: dict, rules: list[SchemeRule]) -> str:
     has_missing = False
 
     for rule in rules:
@@ -92,6 +82,7 @@ def evaluate_scheme(
         return MISSING
 
     return MATCH
+
 
 def get_missing_fields(
     profile_data: dict,
