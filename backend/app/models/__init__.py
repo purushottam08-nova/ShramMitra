@@ -8,11 +8,16 @@ from app.models.scheme_state import SchemeState
 from app.models.scheme_worker_type import SchemeWorkerType
 from app.models.scheme_rule import SchemeRule
 from app.models.document import Document
+from app.models.application import Application
+from app.models.application_status_history import ApplicationStatusHistory
 
 __all__ = [
     "User",
     "WorkerProfile",
     "Scheme",
+    "Document",
+    "Application",
+    "ApplicationStatusHistory",
     "State",
     "WorkerType",
     "SchemeState",
