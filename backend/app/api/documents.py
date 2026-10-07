@@ -8,6 +8,7 @@ from app.api.auth import get_current_user, get_db
 from app.models.document import Document
 from app.models.user import User
 from app.schemas.document import DocumentResponse
+from fastapi.responses import FileResponse
 
 
 router = APIRouter(
@@ -91,3 +92,87 @@ async def upload_document(
         raise
 
     return document
+
+@router.get(
+    "",
+    response_model=list[DocumentResponse],
+)
+def get_my_documents(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return (
+        db.query(Document)
+        .filter(Document.user_id == current_user.id)
+        .order_by(Document.created_at.desc())
+        .all()
+    )
+
+
+@router.get("/{document_id}/download")
+def download_document(
+    document_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    document = (
+        db.query(Document)
+        .filter(
+            Document.id == document_id,
+            Document.user_id == current_user.id,
+        )
+        .first()
+    )
+
+    if not document:
+        raise HTTPException(
+            status_code=404,
+            detail="Document not found",
+        )
+
+    file_path = Path(document.storage_path)
+
+    if not file_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Stored file not found",
+        )
+
+    return FileResponse(
+        path=file_path,
+        media_type=document.mime_type,
+        filename=document.original_filename,
+    )
+
+@router.delete("/{document_id}")
+def delete_document(
+    document_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    document = (
+        db.query(Document)
+        .filter(
+            Document.id == document_id,
+            Document.user_id == current_user.id,
+        )
+        .first()
+    )
+
+    if not document:
+        raise HTTPException(
+            status_code=404,
+            detail="Document not found",
+        )
+
+    file_path = Path(document.storage_path)
+
+    if file_path.exists():
+        file_path.unlink()
+
+    db.delete(document)
+    db.commit()
+
+    return {
+        "message": "Document deleted successfully"
+    }
