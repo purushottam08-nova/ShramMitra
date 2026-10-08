@@ -30,6 +30,8 @@ class ApplicationResponse(BaseModel):
     status: str
     application_date: datetime | None
     created_at: datetime
+    next_action: str | None = None
+    days_in_current_status: int | None = None
 
     class Config:
         from_attributes = True

@@ -13,6 +13,7 @@ from app.schemas.application import (
     ApplicationResponse,
     ApplicationStatusUpdateRequest,
 )
+from app.services.application_status import get_application_summary
 
 
 router = APIRouter(
@@ -72,24 +73,30 @@ def create_application(
     return application
 
 
-@router.get(
-    "",
-    response_model=list[ApplicationResponse],
-)
+@router.get("", response_model=list[ApplicationResponse])
 def get_my_applications(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     applications = (
         db.query(Application)
-        .filter(
-            Application.user_id == current_user.id
-        )
+        .filter(Application.user_id == current_user.id)
         .order_by(Application.created_at.desc())
         .all()
     )
 
-    return applications
+    results = []
+
+    for application in applications:
+        item = ApplicationResponse.model_validate(application)
+
+        summary = get_application_summary(application)
+
+        results.append(
+            item.model_copy(update=summary)
+        )
+
+    return results
 
 
 @router.patch(
