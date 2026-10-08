@@ -37,3 +37,8 @@ class User(Base):
         "Document",
         back_populates="user",
     )
+
+    applications = relationship(
+        "Application",
+        back_populates="user",
+    )
