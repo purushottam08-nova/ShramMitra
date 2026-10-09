@@ -42,3 +42,8 @@ class User(Base):
         "Application",
         back_populates="user",
     )
+
+    grievances = relationship(
+        "Grievance",
+        back_populates="user",
+    )
