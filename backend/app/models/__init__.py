@@ -10,6 +10,8 @@ from app.models.scheme_rule import SchemeRule
 from app.models.document import Document
 from app.models.application import Application
 from app.models.application_status_history import ApplicationStatusHistory
+from app.models.grievance import Grievance
+from app.models.grievance_status_history import GrievanceStatusHistory 
 
 __all__ = [
     "User",

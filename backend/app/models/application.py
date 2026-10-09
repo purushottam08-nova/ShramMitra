@@ -68,3 +68,8 @@ class Application(Base):
         back_populates="application",
         cascade="all, delete-orphan",
     )
+
+    grievances = relationship(
+        "Grievance",
+        back_populates="application",
+    )
