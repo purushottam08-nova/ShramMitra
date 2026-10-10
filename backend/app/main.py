@@ -12,11 +12,13 @@ from app.api.benefits import router as benefits_router
 from app.api.documents import router as documents_router
 from app.api.applications import router as applications_router
 from app.api.grievances import router as grievances_router
+from app.api.dashboard import router as dashboard_router
 
 app = FastAPI(title="ShramMitra API")
 app.include_router(auth_router)
 app.include_router(benefits_router)
 app.include_router(schemes_router)
+app.include_router(dashboard_router)
 app.include_router(grievances_router)
 app.include_router(applications_router)
 app.include_router(documents_router)
