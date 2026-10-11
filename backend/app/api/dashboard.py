@@ -52,6 +52,8 @@ def get_my_dashboard(
             {
                 "id": application.id,
                 "scheme_id": application.scheme_id,
+                "scheme_name": application.scheme.name,
+                "scheme_category": application.scheme.category,
                 "reference_number": application.reference_number,
                 "status": application.status,
                 "application_date": application.application_date,

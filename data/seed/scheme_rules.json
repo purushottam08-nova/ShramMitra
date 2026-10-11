@@ -14,5 +14,45 @@
     "value": "40",
     "logical_group": 1,
     "logical_operator": "AND"
+  },
+  {
+    "scheme_name": "Pradhan Mantri Shram Yogi Maan-Dhan Yojana (PM-SYM)",
+    "field": "monthly_income",
+    "operator": "<=",
+    "value": "15000",
+    "logical_group": 1,
+    "logical_operator": "AND"
+  },
+  {
+    "scheme_name": "Pradhan Mantri Shram Yogi Maan-Dhan Yojana (PM-SYM)",
+    "field": "epfo_status",
+    "operator": "==",
+    "value": "false",
+    "logical_group": 1,
+    "logical_operator": "AND"
+  },
+  {
+    "scheme_name": "Pradhan Mantri Shram Yogi Maan-Dhan Yojana (PM-SYM)",
+    "field": "esic_status",
+    "operator": "==",
+    "value": "false",
+    "logical_group": 1,
+    "logical_operator": "AND"
+  },
+  {
+    "scheme_name": "Pradhan Mantri Shram Yogi Maan-Dhan Yojana (PM-SYM)",
+    "field": "nps_status",
+    "operator": "==",
+    "value": "false",
+    "logical_group": 1,
+    "logical_operator": "AND"
+  },
+  {
+    "scheme_name": "Pradhan Mantri Shram Yogi Maan-Dhan Yojana (PM-SYM)",
+    "field": "income_tax_payer",
+    "operator": "==",
+    "value": "false",
+    "logical_group": 1,
+    "logical_operator": "AND"
   }
 ]

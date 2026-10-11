@@ -13,8 +13,16 @@ from app.api.documents import router as documents_router
 from app.api.applications import router as applications_router
 from app.api.grievances import router as grievances_router
 from app.api.dashboard import router as dashboard_router
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="ShramMitra API")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.include_router(auth_router)
 app.include_router(benefits_router)
 app.include_router(schemes_router)
