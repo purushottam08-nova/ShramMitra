@@ -73,3 +73,5 @@ class Application(Base):
         "Grievance",
         back_populates="application",
     )
+
+    scheme = relationship("Scheme")
