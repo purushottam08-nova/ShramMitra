@@ -14,12 +14,25 @@ router = APIRouter(
 )
 
 
-@router.post("")
+
+@router.post("", status_code=status.HTTP_201_CREATED)
 def create_profile(
     profile_data: WorkerProfileRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    existing_profile = (
+        db.query(WorkerProfile)
+        .filter(WorkerProfile.user_id == current_user.id)
+        .first()
+    )
+
+    if existing_profile:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Worker profile already exists",
+        )
+
     profile = WorkerProfile(
         user_id=current_user.id,
         state=profile_data.state,

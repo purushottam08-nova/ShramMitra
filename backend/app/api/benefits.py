@@ -1,3 +1,4 @@
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -11,6 +12,7 @@ from app.rules.evaluator import (
     NO_MATCH,
     evaluate_scheme,
     get_missing_fields,
+    get_rule_reasons,
 )
 from app.schemas.benefit import BenefitResponse
 
@@ -56,7 +58,6 @@ def get_my_benefits(
     benefits = []
 
     for scheme in schemes:
-
         rules = (
             db.query(SchemeRule)
             .filter(SchemeRule.scheme_id == scheme.id)
@@ -66,27 +67,26 @@ def get_my_benefits(
         if not rules:
             continue
 
-        result = evaluate_scheme(
+        result = evaluate_scheme(profile_data, rules)
+
+        if result == MATCH:
+            status = "Potentially Eligible"
+        elif result == MISSING:
+            status = "Missing Information"
+        elif result == NO_MATCH:
+            status = "Not Matching"
+        else:
+            raise ValueError(f"Unexpected evaluator result: {result}")
+
+        missing_fields = get_missing_fields(
             profile_data,
             rules,
         )
 
-        if result == MATCH:
-            status = "Potentially Eligible"
-
-        elif result == MISSING:
-            status = "Missing Information"
-
-        else:
-            status = "Not Matching"
-
-        missing_fields = []
-
-        if result == MISSING:
-            missing_fields = get_missing_fields(
-                profile_data,
-                rules,
-            )
+        reasons = get_rule_reasons(
+            profile_data,
+            rules,
+        )
 
         benefits.append(
             BenefitResponse(
@@ -97,6 +97,7 @@ def get_my_benefits(
                 source_url=scheme.source_url,
                 status=status,
                 missing_fields=missing_fields,
+                reasons=reasons,
             )
         )
 
