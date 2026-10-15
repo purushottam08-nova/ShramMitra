@@ -311,6 +311,9 @@ def main():
         seed_states(db)
         seed_worker_types(db)
         seed_schemes(db)
+
+        db.flush()
+
         seed_scheme_rules(db)
 
         db.commit()
