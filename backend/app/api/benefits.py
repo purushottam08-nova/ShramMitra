@@ -1,6 +1,7 @@
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from app.services.scheme_verification import is_verification_fresh 
 
 from app.api.auth import get_current_user, get_db
 from app.models.scheme import Scheme
@@ -64,7 +65,65 @@ def get_my_benefits(
             .all()
         )
 
+        # Scheme information has not been verified.
+        # Do not make an eligibility claim.
+        if scheme.verification_status != "VERIFIED":
+            benefits.append(
+                BenefitResponse(
+                    scheme_id=scheme.id,
+                    scheme_name=scheme.name,
+                    description=scheme.description,
+                    category=scheme.category,
+                    source_url=scheme.source_url,
+                    verification_status=scheme.verification_status,
+                    status="Additional Verification Required",
+                    missing_fields=[],
+                    reasons=[
+                        "Scheme information requires verification "
+                        "before eligibility can be assessed."
+                    ],
+                )
+            )
+            continue
+
+        if not is_verification_fresh(scheme.last_verified_at):
+            benefits.append(
+                BenefitResponse(
+                    scheme_id=scheme.id,
+                    scheme_name=scheme.name,
+                    description=scheme.description,
+                    category=scheme.category,
+                    source_url=scheme.source_url,
+                    verification_status="STALE",
+                    status="Additional Verification Required",
+                    missing_fields=[],
+                    reasons=[
+                        "Scheme verification is missing or outdated. "
+                        "Verify the information using an official source "
+                        "before assessing eligibility."
+                    ],
+                )
+            )
+            continue
+
+        # No eligibility rules means we cannot assess this scheme.
         if not rules:
+            benefits.append(
+                BenefitResponse(
+                    scheme_id=scheme.id,
+                    scheme_name=scheme.name,
+                    description=scheme.description,
+                    category=scheme.category,
+                    source_url=scheme.source_url,
+                    verification_status=scheme.verification_status,
+                    status="Additional Verification Required",
+                    missing_fields=[],
+                    reasons=[
+                        "Eligibility rules are not yet configured "
+                        "for this scheme."
+                    ],
+                )
+            )
             continue
 
         result = evaluate_scheme(profile_data, rules)
@@ -76,7 +135,9 @@ def get_my_benefits(
         elif result == NO_MATCH:
             status = "Not Matching"
         else:
-            raise ValueError(f"Unexpected evaluator result: {result}")
+            raise ValueError(
+                f"Unexpected evaluator result: {result}"
+            )
 
         missing_fields = get_missing_fields(
             profile_data,
@@ -95,6 +156,7 @@ def get_my_benefits(
                 description=scheme.description,
                 category=scheme.category,
                 source_url=scheme.source_url,
+                verification_status=scheme.verification_status,
                 status=status,
                 missing_fields=missing_fields,
                 reasons=reasons,

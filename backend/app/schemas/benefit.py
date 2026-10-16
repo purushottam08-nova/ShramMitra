@@ -1,4 +1,3 @@
-
 from pydantic import BaseModel
 
 
@@ -8,6 +7,7 @@ class BenefitResponse(BaseModel):
     description: str
     category: str
     source_url: str
+    verification_status: str
     status: str
     missing_fields: list[str]
     reasons: list[str]

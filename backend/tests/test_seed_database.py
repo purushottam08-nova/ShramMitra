@@ -176,3 +176,56 @@ def test_seed_failure_can_be_rolled_back(db_session, monkeypatch):
 
     assert db_session.query(Scheme).count() == 0
     assert db_session.query(SchemeRule).count() == 0
+
+
+
+
+def test_seed_existing_scheme_updates_metadata(db_session, monkeypatch):
+    mock_seed_files(monkeypatch)
+
+    seed_database.seed_schemes(db_session)
+    db_session.commit()
+
+    scheme = db_session.query(Scheme).one()
+    original_description = scheme.description
+
+    updated_scheme_data = {
+        **SCHEME_DATA,
+        "description": "Updated description for testing.",
+        "source_url": "https://example.gov.in/updated-scheme",
+        "version": "2.0",
+        "verification_status": "REVIEW_REQUIRED",
+        "last_verified_at": None,
+    }
+
+    monkeypatch.setattr(
+        seed_database,
+        "load_json",
+        lambda filename: [updated_scheme_data]
+        if filename == "schemes.json"
+        else [],
+    )
+
+    seed_database.seed_schemes(db_session)
+    db_session.commit()
+    db_session.refresh(scheme)
+
+    assert db_session.query(Scheme).count() == 1
+    assert scheme.description != original_description
+    assert scheme.description == "Updated description for testing."
+    assert scheme.source_url == "https://example.gov.in/updated-scheme"
+    assert scheme.version == "2.0"
+    assert scheme.verification_status == "REVIEW_REQUIRED"
+    assert scheme.last_verified_at is None
+
+
+def test_seed_existing_scheme_does_not_duplicate(db_session, monkeypatch):
+    mock_seed_files(monkeypatch)
+
+    seed_database.seed_schemes(db_session)
+    db_session.commit()
+
+    seed_database.seed_schemes(db_session)
+    db_session.commit()
+
+    assert db_session.query(Scheme).count() == 1

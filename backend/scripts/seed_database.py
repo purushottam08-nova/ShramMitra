@@ -172,7 +172,6 @@ def validate_scheme_rules(rules):
                     f"{prefix}: Value for 'age' must be a whole number."
                 )
 
-        # Numeric comparison operators are not valid for text/boolean fields.
         if operator in {">", "<", ">=", "<="}:
             if field not in NUMERIC_FIELDS:
                 raise ValueError(
@@ -180,7 +179,6 @@ def validate_scheme_rules(rules):
                     f"cannot be used with field '{field}'."
                 )
 
-        # Text fields require a non-empty string value.
         if field not in NUMERIC_FIELDS | BOOLEAN_FIELDS:
             if not isinstance(value, str) or not value.strip():
                 raise ValueError(
@@ -231,6 +229,7 @@ def seed_worker_types(db):
         )
 
 
+
 def seed_schemes(db):
     schemes = load_json("schemes.json")
 
@@ -241,7 +240,25 @@ def seed_schemes(db):
             .first()
         )
 
+        raw_verified_at = scheme_data.get("last_verified_at")
+        verified_at = (
+            datetime.fromisoformat(raw_verified_at)
+            if raw_verified_at
+            else None
+        )
+
         if existing_scheme:
+
+            existing_scheme.description = scheme_data["description"]
+            existing_scheme.category = scheme_data["category"]
+            existing_scheme.level = scheme_data["level"]
+            existing_scheme.source_url = scheme_data["source_url"]
+            existing_scheme.verification_status = (
+                scheme_data["verification_status"]
+            )
+            existing_scheme.last_verified_at = verified_at
+            existing_scheme.version = scheme_data["version"]
+            existing_scheme.status = scheme_data["status"]
             continue
 
         db.add(
@@ -252,13 +269,12 @@ def seed_schemes(db):
                 level=scheme_data["level"],
                 source_url=scheme_data["source_url"],
                 verification_status=scheme_data["verification_status"],
-                last_verified_at=datetime.fromisoformat(
-                    scheme_data["last_verified_at"]
-                ),
+                last_verified_at=verified_at,
                 version=scheme_data["version"],
                 status=scheme_data["status"],
             )
         )
+
 
 
 def seed_scheme_rules(db):
