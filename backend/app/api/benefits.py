@@ -1,6 +1,7 @@
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from app.services.scheme_verification import is_verification_fresh 
 
 from app.api.auth import get_current_user, get_db
 from app.models.scheme import Scheme
@@ -80,6 +81,26 @@ def get_my_benefits(
                     reasons=[
                         "Scheme information requires verification "
                         "before eligibility can be assessed."
+                    ],
+                )
+            )
+            continue
+
+        if not is_verification_fresh(scheme.last_verified_at):
+            benefits.append(
+                BenefitResponse(
+                    scheme_id=scheme.id,
+                    scheme_name=scheme.name,
+                    description=scheme.description,
+                    category=scheme.category,
+                    source_url=scheme.source_url,
+                    verification_status="STALE",
+                    status="Additional Verification Required",
+                    missing_fields=[],
+                    reasons=[
+                        "Scheme verification is missing or outdated. "
+                        "Verify the information using an official source "
+                        "before assessing eligibility."
                     ],
                 )
             )

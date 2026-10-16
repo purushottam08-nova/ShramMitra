@@ -14,6 +14,7 @@ from app.models.scheme import Scheme
 from app.models.scheme_rule import SchemeRule
 from app.models.user import User
 from app.models.worker_profile import WorkerProfile
+from datetime import datetime, timedelta
 
 
 @pytest.fixture
@@ -93,6 +94,7 @@ def create_scheme(
         verification_status=verification_status,
         version="1.0",
         status="ACTIVE",
+        last_verified_at=datetime.now() - timedelta(days=1),
     )
 
     db.add(scheme)
@@ -226,3 +228,70 @@ def test_user_without_profile_receives_empty_list(
 
     assert response.status_code == 200
     assert response.json() == []
+
+
+
+
+def test_stale_verified_scheme_requires_reverification(
+    benefits_test_setup,
+):
+    client, db, _ = benefits_test_setup
+
+    scheme = create_scheme(db, verification_status="VERIFIED")
+    scheme.last_verified_at = datetime.now() - timedelta(days=91)
+    db.commit()
+
+    # Even a matching rule must not override stale verification.
+    add_age_rule(db, scheme.id, operator=">=", value="18")
+
+    response = client.get("/benefits/me")
+
+    assert response.status_code == 200
+    benefit = response.json()[0]
+
+    assert benefit["verification_status"] == "STALE"
+    assert benefit["status"] == "Additional Verification Required"
+    assert any(
+        "outdated" in reason.lower()
+        for reason in benefit["reasons"]
+    )
+
+
+def test_missing_verification_date_requires_reverification(
+    benefits_test_setup,
+):
+    client, db, _ = benefits_test_setup
+
+    scheme = create_scheme(db, verification_status="VERIFIED")
+    scheme.last_verified_at = None
+    db.commit()
+
+    add_age_rule(db, scheme.id, operator=">=", value="18")
+
+    response = client.get("/benefits/me")
+
+    assert response.status_code == 200
+    benefit = response.json()[0]
+
+    assert benefit["verification_status"] == "STALE"
+    assert benefit["status"] == "Additional Verification Required"
+
+
+def test_fresh_verified_scheme_still_evaluates_rules(
+    benefits_test_setup,
+):
+    client, db, _ = benefits_test_setup
+
+    scheme = create_scheme(db, verification_status="VERIFIED")
+    scheme.last_verified_at = datetime.now() - timedelta(days=10)
+    db.commit()
+
+    add_age_rule(db, scheme.id, operator=">=", value="18")
+
+    response = client.get("/benefits/me")
+
+    assert response.status_code == 200
+    benefit = response.json()[0]
+
+    assert benefit["verification_status"] == "VERIFIED"
+    assert benefit["status"] == "Potentially Eligible"
