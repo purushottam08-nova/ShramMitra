@@ -12,6 +12,7 @@ from app.models.application import Application
 from app.models.application_status_history import ApplicationStatusHistory
 from app.models.grievance import Grievance
 from app.models.grievance_status_history import GrievanceStatusHistory 
+from app.models.scheme_verification_history import SchemeVerificationHistory
 
 __all__ = [
     "User",
@@ -25,4 +26,7 @@ __all__ = [
     "SchemeState",
     "SchemeWorkerType",
     "SchemeRule",
+    "Grievance",
+    "GrievanceStatusHistory",
+    "SchemeVerificationHistory",
 ]
