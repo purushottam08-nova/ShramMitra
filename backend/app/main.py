@@ -14,6 +14,7 @@ from app.api.applications import router as applications_router
 from app.api.grievances import router as grievances_router
 from app.api.dashboard import router as dashboard_router
 from fastapi.middleware.cors import CORSMiddleware
+from app.api import admin
 
 app = FastAPI(title="ShramMitra API")
 app.add_middleware(
@@ -31,6 +32,7 @@ app.include_router(grievances_router)
 app.include_router(applications_router)
 app.include_router(documents_router)
 app.include_router(profile_router)
+app.include_router(admin.router)
 
 @app.get("/")
 def root():
