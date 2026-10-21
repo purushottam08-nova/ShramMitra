@@ -40,6 +40,3 @@ Python + FastAPI
 ### Database
 PostgreSQL
 
-## Project Status
-
-Day 1 — Project Foundation
