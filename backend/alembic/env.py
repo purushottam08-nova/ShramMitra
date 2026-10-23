@@ -1,5 +1,7 @@
+
 from logging.config import fileConfig
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 from sqlalchemy import engine_from_config
@@ -17,11 +19,13 @@ from app.models import (
     SchemeState,
     SchemeWorkerType,
     SchemeRule,
+    SchemeVerificationHistory,
 )
 
 
-# Load environment variables from .env
-load_dotenv()
+# Load environment variables from the backend .env file
+BASE_DIR = Path(__file__).resolve().parents[1]
+load_dotenv(BASE_DIR / ".env")
 
 
 # Alembic Config object
@@ -53,11 +57,10 @@ target_metadata = Base.metadata
 
 def run_migrations_offline() -> None:
     """
-    Run migrations in 'offline' mode.
+    Run migrations in offline mode.
 
     This generates SQL without creating a live database connection.
     """
-
     url = config.get_main_option("sqlalchemy.url")
 
     context.configure(
@@ -75,11 +78,10 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     """
-    Run migrations in 'online' mode.
+    Run migrations in online mode.
 
     This creates a real database connection and applies migrations.
     """
-
     connectable = engine_from_config(
         config.get_section(config.config_ini_section),
         prefix="sqlalchemy.",
@@ -87,7 +89,6 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
