@@ -241,7 +241,6 @@ def test_stale_verified_scheme_requires_reverification(
     scheme.last_verified_at = datetime.now() - timedelta(days=91)
     db.commit()
 
-    # Even a matching rule must not override stale verification.
     add_age_rule(db, scheme.id, operator=">=", value="18")
 
     response = client.get("/benefits/me")
@@ -295,3 +294,30 @@ def test_fresh_verified_scheme_still_evaluates_rules(
 
     assert benefit["verification_status"] == "VERIFIED"
     assert benefit["status"] == "Potentially Eligible"
+
+
+
+def test_future_verified_timestamp_requires_reverification(
+    benefits_test_setup,
+):
+    client, db, _ = benefits_test_setup
+
+    scheme = create_scheme(db, verification_status="VERIFIED")
+    scheme.last_verified_at = datetime.now() + timedelta(days=1)
+    db.commit()
+
+    add_age_rule(db, scheme.id, operator=">=", value="18")
+
+    response = client.get("/benefits/me")
+
+    assert response.status_code == 200
+
+    benefit = response.json()[0]
+
+    assert benefit["verification_status"] == "STALE"
+    assert benefit["status"] == "Additional Verification Required"
+    assert any(
+        "outdated" in reason.lower()
+        or "official source" in reason.lower()
+        for reason in benefit["reasons"]
+    )

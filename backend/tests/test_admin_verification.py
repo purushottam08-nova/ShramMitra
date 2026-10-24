@@ -176,3 +176,30 @@ def test_invalid_verification_payload_is_rejected(admin_test_setup, payload):
 
     assert response.status_code == 422
     assert db.query(SchemeVerificationHistory).count() == 0
+
+
+
+def test_failed_commit_rolls_back_scheme_and_history(
+    admin_test_setup, monkeypatch
+):
+    client, db, worker, admin_user, scheme, active_user = admin_test_setup
+    active_user["user"] = admin_user
+
+    def fail_commit():
+        raise RuntimeError("Simulated database commit failure")
+
+    monkeypatch.setattr(db, "commit", fail_commit)
+
+    response = client.post(
+        f"/admin/schemes/{scheme.id}/verify",
+        json=verification_payload(),
+    )
+
+    assert response.status_code == 500
+    assert response.json()["detail"] == "Could not save scheme verification"
+
+    db.refresh(scheme)
+    assert scheme.verification_status == "PENDING"
+    assert scheme.version == "1.0"
+
+    assert db.query(SchemeVerificationHistory).count() == 0
