@@ -136,3 +136,29 @@ def test_token_for_nonexistent_user_is_rejected(jwt_test_setup):
     )
 
     assert response.status_code == 401
+
+
+
+def test_missing_token_is_rejected(jwt_test_setup):
+    client, db, user = jwt_test_setup
+
+    response = client.get("/auth/me")
+
+    assert response.status_code in (401, 403)
+
+
+def test_worker_token_cannot_access_admin_endpoint(jwt_test_setup):
+    client, db, user = jwt_test_setup
+    token = create_access_token(user.id)
+
+    response = client.post(
+        "/admin/schemes/1/verify",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "source_url": "https://www.india.gov.in/",
+            "notes": "Checked against the official government source.",
+            "version": "2.0",
+        },
+    )
+
+    assert response.status_code == 403
