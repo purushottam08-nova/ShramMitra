@@ -203,3 +203,61 @@ def test_failed_commit_rolls_back_scheme_and_history(
     assert scheme.version == "1.0"
 
     assert db.query(SchemeVerificationHistory).count() == 0
+
+
+
+def test_reverification_preserves_previous_history(admin_test_setup):
+    client, db, worker, admin_user, scheme, active_user = admin_test_setup
+    active_user["user"] = admin_user
+
+    first_payload = verification_payload()
+
+    first_response = client.post(
+        f"/admin/schemes/{scheme.id}/verify",
+        json=first_payload,
+    )
+    assert first_response.status_code == 200
+
+    first_history_id = first_response.json()["history_id"]
+
+    second_payload = {
+        "source_url": "https://www.myscheme.gov.in/",
+        "notes": "Rechecked the scheme against the official source.",
+        "version": "3.0",
+    }
+
+    second_response = client.post(
+        f"/admin/schemes/{scheme.id}/verify",
+        json=second_payload,
+    )
+    assert second_response.status_code == 200
+    assert second_response.json()["version"] == "3.0"
+
+    db.refresh(scheme)
+
+    assert scheme.verification_status == "VERIFIED"
+    assert scheme.version == "3.0"
+    assert scheme.source_url == "https://www.myscheme.gov.in/"
+
+    histories = (
+        db.query(SchemeVerificationHistory)
+        .filter(SchemeVerificationHistory.scheme_id == scheme.id)
+        .order_by(SchemeVerificationHistory.id)
+        .all()
+    )
+
+    assert len(histories) == 2
+
+    first_history, second_history = histories
+
+    assert first_history.id == first_history_id
+    assert first_history.previous_status == "PENDING"
+    assert first_history.new_status == "VERIFIED"
+    assert second_history.verifier_id == admin_user.id
+    assert second_history.previous_status == "VERIFIED"
+    assert second_history.new_status == "VERIFIED"
+    assert second_history.source_url == second_payload["source_url"]
+    assert second_history.notes == second_payload["notes"]
+
+
+
