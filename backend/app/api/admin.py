@@ -43,6 +43,7 @@ def verify_scheme(
         previous_status=previous_status,
         new_status="VERIFIED",
         source_url=scheme.source_url,
+        version=scheme.version,
         notes=request.notes,
         verified_at=scheme.last_verified_at,
     )

@@ -43,6 +43,11 @@ class SchemeVerificationHistory(Base):
         nullable=False,
     )
 
+    version: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+    )
+
     notes: Mapped[str] = mapped_column(
         Text,
         nullable=False,

@@ -129,6 +129,7 @@ def test_admin_can_verify_scheme_and_create_history(admin_test_setup):
     assert history.previous_status == "PENDING"
     assert history.new_status == "VERIFIED"
     assert history.notes == verification_payload()["notes"]
+    assert history.version == "2.0"
 
 
 def test_admin_verifying_missing_scheme_returns_404(admin_test_setup):
@@ -258,6 +259,5 @@ def test_reverification_preserves_previous_history(admin_test_setup):
     assert second_history.new_status == "VERIFIED"
     assert second_history.source_url == second_payload["source_url"]
     assert second_history.notes == second_payload["notes"]
-
-
-
+    assert first_history.version == "2.0"
+    assert second_history.version == "3.0"
