@@ -1564,3 +1564,24 @@ a {
     transition-duration: 0.01ms !important;
   }
 }
+
+.dashboard-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dashboard-header-actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .dashboard-header-actions {
+    width: 100%;
+  }
+
+  .dashboard-header-actions button {
+    flex: 1;
+  }
+}

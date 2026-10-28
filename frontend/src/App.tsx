@@ -65,6 +65,7 @@ function WorkerApp() {
   const [benefits, setBenefits] = useState<Benefit[]>([]);
 
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [benefitsError, setBenefitsError] = useState("");
 
@@ -161,6 +162,62 @@ function WorkerApp() {
       setLoading(false);
     }
   }
+
+  // -------------------- REFRESH DASHBOARD --------------------
+
+async function handleRefresh() {
+  if (!token) return;
+
+  setRefreshing(true);
+  setError("");
+  setBenefitsError("");
+
+  const headers = {
+    Authorization: `Bearer ${token}`,
+  };
+
+  try {
+    const [dashboardResponse, benefitsResponse] = await Promise.all([
+      fetch(`${API_URL}/dashboard/me`, { headers }),
+      fetch(`${API_URL}/benefits/me`, { headers }),
+    ]);
+
+    if (
+      dashboardResponse.status === 401 ||
+      benefitsResponse.status === 401
+    ) {
+      throw new Error("Session expire ho gaya. Dobara login karo.");
+    }
+
+    if (!dashboardResponse.ok) {
+      throw new Error("Dashboard refresh nahi ho paya.");
+    }
+
+    const dashboardData: DashboardData =
+      await dashboardResponse.json();
+
+    setDashboard(dashboardData);
+
+    if (!benefitsResponse.ok) {
+      setBenefitsError(
+        "Benefits refresh nahi ho paaye. Thodi der baad retry karo.",
+      );
+    } else {
+      const benefitsData: Benefit[] =
+        await benefitsResponse.json();
+
+      setBenefits(benefitsData);
+    }
+  } catch (err) {
+    setError(
+      err instanceof Error
+        ? err.message
+        : "Dashboard refresh karte waqt problem hui.",
+    );
+  } finally {
+    setRefreshing(false);
+  }
+}
 
   // -------------------- LOGOUT --------------------
 
@@ -535,13 +592,29 @@ function WorkerApp() {
           </p>
         </div>
 
-        <button
-          className="secondary-button"
-          onClick={handleLogout}
-        >
-          Logout
-        </button>
+        <div className="dashboard-header-actions">
+          <button
+            className="secondary-button"
+            onClick={handleRefresh}
+            disabled={refreshing}
+          >
+            {refreshing ? "Refreshing..." : "↻ Refresh"}
+          </button>
+
+          <button
+            className="secondary-button"
+            onClick={handleLogout}
+          >
+            Logout
+          </button>
+        </div>
       </header>
+
+      {error && (
+        <p className="error-message" role="alert">
+          {error}
+        </p>
+      )}
 
       {/* DASHBOARD STATISTICS */}
 
@@ -757,7 +830,6 @@ function WorkerApp() {
     </main>
   );
 }
-
 
 function App() {
   if (window.location.pathname === "/admin") {
