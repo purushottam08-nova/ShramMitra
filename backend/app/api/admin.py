@@ -69,3 +69,47 @@ def verify_scheme(
         "verified_at": scheme.last_verified_at,
         "history_id": history.id,
     }
+
+@router.get("/schemes/{scheme_id}/verification-history")
+def get_scheme_verification_history(
+    scheme_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    scheme = db.query(Scheme).filter(Scheme.id == scheme_id).first()
+
+    if scheme is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Scheme not found",
+        )
+
+    histories = (
+        db.query(SchemeVerificationHistory)
+        .filter(SchemeVerificationHistory.scheme_id == scheme_id)
+        .order_by(
+            SchemeVerificationHistory.verified_at.desc(),
+            SchemeVerificationHistory.id.desc(),
+        )
+        .all()
+    )
+
+    return {
+        "scheme_id": scheme_id,
+        "scheme_name": scheme.name,
+        "total_records": len(histories),
+        "history": [
+            {
+                "id": history.id,
+                "verifier_id": history.verifier_id,
+                "verifier_name": history.verifier.full_name,
+                "previous_status": history.previous_status,
+                "new_status": history.new_status,
+                "source_url": history.source_url,
+                "version": history.version,
+                "notes": history.notes,
+                "verified_at": history.verified_at,
+            }
+            for history in histories
+        ],
+    }

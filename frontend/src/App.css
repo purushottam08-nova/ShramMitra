@@ -1564,3 +1564,65 @@ a {
     transition-duration: 0.01ms !important;
   }
 }
+
+.dashboard-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dashboard-header-actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .dashboard-header-actions {
+    width: 100%;
+  }
+
+  .dashboard-header-actions button {
+    flex: 1;
+  }
+}
+
+.profile-form {
+  display: grid;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.profile-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.profile-fields label {
+  display: grid;
+  gap: 8px;
+  font-weight: 500;
+}
+
+.profile-fields input,
+.profile-fields select {
+  width: 100%;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid #d8dedb;
+  border-radius: 10px;
+  background: #fff;
+  color: #1c2923;
+  font: inherit;
+}
+
+.profile-success {
+  color: #16834a;
+  font-weight: 600;
+}
+
+@media (max-width: 600px) {
+  .profile-fields {
+    grid-template-columns: 1fr;
+  }
+}

@@ -261,3 +261,98 @@ def test_reverification_preserves_previous_history(admin_test_setup):
     assert second_history.notes == second_payload["notes"]
     assert first_history.version == "2.0"
     assert second_history.version == "3.0"
+
+
+def test_admin_can_view_scheme_verification_history(admin_test_setup):
+    client, db, worker, admin_user, scheme, active_user = admin_test_setup
+    active_user["user"] = admin_user
+
+    verify_response = client.post(
+        f"/admin/schemes/{scheme.id}/verify",
+        json=verification_payload(),
+    )
+
+    assert verify_response.status_code == 200
+
+    response = client.get(
+        f"/admin/schemes/{scheme.id}/verification-history"
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["scheme_id"] == scheme.id
+    assert data["scheme_name"] == scheme.name
+    assert data["total_records"] == 1
+
+    history = data["history"][0]
+
+    assert history["version"] == "2.0"
+    assert history["previous_status"] == "PENDING"
+    assert history["new_status"] == "VERIFIED"
+    assert history["verifier_id"] == admin_user.id
+    assert history["verifier_name"] == admin_user.full_name
+    assert history["source_url"] == verification_payload()["source_url"]
+
+
+def test_worker_cannot_view_scheme_verification_history(admin_test_setup):
+    client, db, worker, admin_user, scheme, active_user = admin_test_setup
+
+    response = client.get(
+        f"/admin/schemes/{scheme.id}/verification-history"
+    )
+
+    assert response.status_code == 403
+
+
+def test_missing_scheme_history_returns_404(admin_test_setup):
+    client, db, worker, admin_user, scheme, active_user = admin_test_setup
+    active_user["user"] = admin_user
+
+    response = client.get(
+        "/admin/schemes/99999/verification-history"
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Scheme not found"
+
+
+def test_scheme_history_is_returned_newest_first(admin_test_setup):
+    client, db, worker, admin_user, scheme, active_user = admin_test_setup
+    active_user["user"] = admin_user
+
+    first_response = client.post(
+        f"/admin/schemes/{scheme.id}/verify",
+        json=verification_payload(),
+    )
+
+    assert first_response.status_code == 200
+
+    second_payload = {
+        "source_url": "https://www.myscheme.gov.in/",
+        "notes": "Rechecked the scheme against the official source.",
+        "version": "3.0",
+    }
+
+    second_response = client.post(
+        f"/admin/schemes/{scheme.id}/verify",
+        json=second_payload,
+    )
+
+    assert second_response.status_code == 200
+
+    response = client.get(
+        f"/admin/schemes/{scheme.id}/verification-history"
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["total_records"] == 2
+
+    history = data["history"]
+
+    assert history[0]["version"] == "3.0"
+    assert history[1]["version"] == "2.0"

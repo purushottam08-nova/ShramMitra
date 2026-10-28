@@ -1,4 +1,3 @@
-
 from collections import defaultdict
 
 from app.models.scheme_rule import SchemeRule
@@ -35,7 +34,8 @@ OPERATOR_LABELS = {
 def normalize_value(value) -> str:
     if isinstance(value, bool):
         return str(value).lower()
-    return str(value)
+
+    return str(value).strip().lower()
 
 
 def format_value(field: str, value) -> str:
@@ -60,18 +60,27 @@ def evaluate_rule(profile_data: dict, rule: SchemeRule) -> str:
     expected_value = rule.value
 
     if rule.operator == "==":
-        return MATCH if (
-            normalize_value(actual_value) == expected_value.lower()
-        ) else NO_MATCH
+        return (
+            MATCH
+            if normalize_value(actual_value)
+            == normalize_value(expected_value)
+            else NO_MATCH
+        )
 
     if rule.operator == "!=":
-        return MATCH if (
-            normalize_value(actual_value) != expected_value.lower()
-        ) else NO_MATCH
+        return (
+            MATCH
+            if normalize_value(actual_value)
+            != normalize_value(expected_value)
+            else NO_MATCH
+        )
 
     if rule.operator in {">", "<", ">=", "<="}:
-        actual = float(actual_value)
-        expected = float(expected_value)
+        try:
+            actual = float(actual_value)
+            expected = float(expected_value)
+        except (TypeError, ValueError):
+            return MISSING
 
         comparisons = {
             ">": actual > expected,
@@ -79,6 +88,7 @@ def evaluate_rule(profile_data: dict, rule: SchemeRule) -> str:
             ">=": actual >= expected,
             "<=": actual <= expected,
         }
+
         return MATCH if comparisons[rule.operator] else NO_MATCH
 
     raise ValueError(f"Unsupported operator: {rule.operator}")
@@ -94,15 +104,19 @@ def combine_results(results: list[str], operator: str) -> str:
     if operator == "AND":
         if NO_MATCH in results:
             return NO_MATCH
+
         if MISSING in results:
             return MISSING
+
         return MATCH
 
     if operator == "OR":
         if MATCH in results:
             return MATCH
+
         if MISSING in results:
             return MISSING
+
         return NO_MATCH
 
     raise ValueError(f"Unsupported logical operator: {operator}")
@@ -129,6 +143,7 @@ def group_rules(rules: list[SchemeRule]) -> dict[int, list[SchemeRule]]:
             )
 
         operator = next(iter(operators))
+
         if operator not in {"AND", "OR"}:
             raise ValueError(f"Unsupported logical operator: {operator}")
 
@@ -170,8 +185,15 @@ def get_missing_fields(
     missing_fields = []
 
     for group in group_rules(rules).values():
-        results = [evaluate_rule(profile_data, rule) for rule in group]
-        group_result = combine_results(results, get_group_operator(group))
+        results = [
+            evaluate_rule(profile_data, rule)
+            for rule in group
+        ]
+
+        group_result = combine_results(
+            results,
+            get_group_operator(group),
+        )
 
         if group_result != MISSING:
             continue
@@ -202,13 +224,17 @@ def get_rule_reasons(
             (group_id, group)
             for group_id, group in groups.items()
             if combine_results(
-                [evaluate_rule(profile_data, rule) for rule in group],
+                [
+                    evaluate_rule(profile_data, rule)
+                    for rule in group
+                ],
                 get_group_operator(group),
             ) == MATCH
         ]
 
         for group_id, group in matched_groups:
             operator = get_group_operator(group)
+
             if operator == "AND":
                 reasons.append(
                     f"Eligibility group {group_id}: all configured "
@@ -223,11 +249,19 @@ def get_rule_reasons(
         reasons.append(
             "This is a preliminary result, not an official approval."
         )
+
         return reasons
 
     for group_id, group in groups.items():
-        results = [evaluate_rule(profile_data, rule) for rule in group]
-        group_result = combine_results(results, get_group_operator(group))
+        results = [
+            evaluate_rule(profile_data, rule)
+            for rule in group
+        ]
+
+        group_result = combine_results(
+            results,
+            get_group_operator(group),
+        )
 
         # Don't report irrelevant failures from an alternative group.
         if overall_result == MISSING and group_result != MISSING:
@@ -248,12 +282,14 @@ def get_rule_reasons(
             elif result == NO_MATCH:
                 # In an OR group, one failed condition is not
                 # a group failure if another condition matches.
-                if get_group_operator(group) == "OR" and (
-                    group_result == MATCH
+                if (
+                    get_group_operator(group) == "OR"
+                    and group_result == MATCH
                 ):
                     continue
 
                 operator_label = OPERATOR_LABELS.get(rule.operator)
+
                 if operator_label is None:
                     raise ValueError(
                         f"Unsupported operator: {rule.operator}"
@@ -271,6 +307,8 @@ def get_rule_reasons(
                 )
 
     if not reasons:
-        reasons.append("More information is needed to evaluate eligibility.")
+        reasons.append(
+            "More information is needed to evaluate eligibility."
+        )
 
     return reasons
