@@ -52,6 +52,34 @@ type Benefit = {
   reasons: string[];
 };
 
+type WorkerProfile = {
+  age: number | null;
+  monthly_income: number | null;
+  epfo_status: boolean | null;
+  esic_status: boolean | null;
+  nps_status: boolean | null;
+  income_tax_payer: boolean | null;
+  state: string;
+  district: string;
+  worker_type: string;
+  employment_type: string;
+  monthly_income_range: string;
+};
+
+const emptyProfile: WorkerProfile = {
+  age: null,
+  monthly_income: null,
+  epfo_status: null,
+  esic_status: null,
+  nps_status: null,
+  income_tax_payer: null,
+  state: "",
+  district: "",
+  worker_type: "",
+  employment_type: "",
+  monthly_income_range: "",
+};
+
 // -------------------- WORKER APP --------------------
 
 function WorkerApp() {
@@ -69,6 +97,11 @@ function WorkerApp() {
   const [error, setError] = useState("");
   const [benefitsError, setBenefitsError] = useState("");
 
+  const [profile, setProfile] = useState<WorkerProfile>(emptyProfile);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileMessage, setProfileMessage] = useState("");
+  const [profileError, setProfileError] = useState("");
+  
   // -------------------- LOGIN --------------------
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
@@ -77,14 +110,20 @@ function WorkerApp() {
     setLoading(true);
     setError("");
     setBenefitsError("");
+    setProfileError("");
+    setProfileMessage("");
 
     try {
+      // 1. Login request
       const loginResponse = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ mobile, password }),
+        body: JSON.stringify({
+          mobile: mobile.trim(),
+          password,
+        }),
       });
 
       if (!loginResponse.ok) {
@@ -104,43 +143,73 @@ function WorkerApp() {
         Authorization: `Bearer ${loginData.access_token}`,
       };
 
-      // User aur dashboard data parallel mein load hoga.
-      const [userResponse, dashboardResponse] = await Promise.all([
+      // 2. User, dashboard aur profile parallel mein load karo
+      const [
+        userResponse,
+        dashboardResponse,
+        profileResponse,
+      ] = await Promise.all([
         fetch(`${API_URL}/auth/me`, { headers }),
         fetch(`${API_URL}/dashboard/me`, { headers }),
+        fetch(`${API_URL}/profile/me`, { headers }),
       ]);
 
+      // 3. Session validation
       if (
         userResponse.status === 401 ||
-        dashboardResponse.status === 401
+        dashboardResponse.status === 401 ||
+        profileResponse.status === 401
       ) {
-        throw new Error("Session validate nahi hua. Dobara login karo.");
+        throw new Error(
+          "Session validate nahi hua. Dobara login karo.",
+        );
       }
 
-      if (!userResponse.ok || !dashboardResponse.ok) {
-        throw new Error("Dashboard load nahi hua. Dobara try karo.");
+      if (
+        !userResponse.ok ||
+        !dashboardResponse.ok ||
+        !profileResponse.ok
+      ) {
+        throw new Error(
+          "User, dashboard ya profile load nahi hua. Dobara try karo.",
+        );
       }
 
+      // 4. Response data
       const userData: User = await userResponse.json();
 
       const dashboardData: DashboardData =
         await dashboardResponse.json();
 
+      const profileData: WorkerProfile =
+        await profileResponse.json();
+
+      // 5. Main application state
       setToken(loginData.access_token);
       setUser(userData);
       setDashboard(dashboardData);
 
-      // Benefits fail hone par bhi dashboard accessible rahega.
+      setProfile({
+        ...emptyProfile,
+        ...profileData,
+      });
+
+      // 6. Benefits fetch
+      // Benefits API fail hone par bhi dashboard accessible rahega.
       try {
-        const benefitsResponse = await fetch(`${API_URL}/benefits/me`, {
-          headers,
-        });
+        const benefitsResponse = await fetch(
+          `${API_URL}/benefits/me`,
+          { headers },
+        );
 
         if (!benefitsResponse.ok) {
-          throw new Error("Benefits API ne error return kiya.");
+          throw new Error(
+            "Benefits API ne error return kiya.",
+          );
         }
 
-        const benefitsData: Benefit[] = await benefitsResponse.json();
+        const benefitsData: Benefit[] =
+          await benefitsResponse.json();
 
         setBenefits(benefitsData);
       } catch {
@@ -162,6 +231,7 @@ function WorkerApp() {
       setLoading(false);
     }
   }
+
 
   // -------------------- REFRESH DASHBOARD --------------------
 
@@ -219,6 +289,66 @@ async function handleRefresh() {
   }
 }
 
+
+async function handleProfileSave(event: FormEvent<HTMLFormElement>) {
+  event.preventDefault();
+
+  if (!token) return;
+
+  setProfileSaving(true);
+  setProfileMessage("");
+  setProfileError("");
+
+  try {
+    const response = await fetch(`${API_URL}/profile/me`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(profile),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+
+      throw new Error(
+        errorData?.detail || "Profile update nahi ho paya.",
+      );
+    }
+
+    const updatedProfile: WorkerProfile = await response.json();
+
+    setProfile({
+      ...emptyProfile,
+      ...updatedProfile,
+    });
+
+    setProfileMessage("Profile successfully update ho gaya!");
+
+    // Updated profile ke basis par benefits refresh karo.
+    const benefitsResponse = await fetch(`${API_URL}/benefits/me`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (benefitsResponse.ok) {
+      const updatedBenefits: Benefit[] =
+        await benefitsResponse.json();
+
+      setBenefits(updatedBenefits);
+    }
+  } catch (err) {
+    setProfileError(
+      err instanceof Error
+        ? err.message
+        : "Profile update karte waqt error aaya.",
+    );
+  } finally {
+    setProfileSaving(false);
+  }
+}
   // -------------------- LOGOUT --------------------
 
   function handleLogout() {
@@ -639,6 +769,174 @@ async function handleRefresh() {
 
           <strong>{dashboard.open_grievances_count}</strong>
         </article>
+      </section>
+
+      <section className="content-section">
+        <h2>Your worker profile</h2>
+
+        <p className="muted">
+          Apni details updated rakho taaki relevant schemes check ho sakein.
+        </p>
+
+        <form className="profile-form" onSubmit={handleProfileSave}>
+          <div className="profile-fields">
+            <label>
+              Age
+              <input
+                type="number"
+                min="18"
+                max="100"
+                value={profile.age ?? ""}
+                onChange={(event) =>
+                  setProfile({
+                    ...profile,
+                    age: event.target.value
+                      ? Number(event.target.value)
+                      : null,
+                  })
+                }
+              />
+            </label>
+
+            <label>
+              Monthly income (₹)
+              <input
+                type="number"
+                min="0"
+                value={profile.monthly_income ?? ""}
+                onChange={(event) =>
+                  setProfile({
+                    ...profile,
+                    monthly_income: event.target.value
+                      ? Number(event.target.value)
+                      : null,
+                  })
+                }
+              />
+            </label>
+
+            <label>
+              State
+              <input
+                value={profile.state}
+                onChange={(event) =>
+                  setProfile({ ...profile, state: event.target.value })
+                }
+                placeholder="e.g. Maharashtra"
+              />
+            </label>
+
+            <label>
+              District
+              <input
+                value={profile.district}
+                onChange={(event) =>
+                  setProfile({ ...profile, district: event.target.value })
+                }
+                placeholder="e.g. Nashik"
+              />
+            </label>
+
+            <label>
+              Worker type
+              <input
+                value={profile.worker_type}
+                onChange={(event) =>
+                  setProfile({
+                    ...profile,
+                    worker_type: event.target.value,
+                  })
+                }
+                placeholder="e.g. Delivery Partner"
+              />
+            </label>
+
+            <label>
+              Employment type
+              <input
+                value={profile.employment_type}
+                onChange={(event) =>
+                  setProfile({
+                    ...profile,
+                    employment_type: event.target.value,
+                  })
+                }
+                placeholder="e.g. Self-employed"
+              />
+            </label>
+
+            <label>
+              Monthly income range
+              <input
+                value={profile.monthly_income_range}
+                onChange={(event) =>
+                  setProfile({
+                    ...profile,
+                    monthly_income_range: event.target.value,
+                  })
+                }
+                placeholder="e.g. 10000-20000"
+              />
+            </label>
+          </div>
+
+          <div className="profile-fields">
+            {(
+              [
+                ["epfo_status", "EPFO registered?"],
+                ["esic_status", "ESIC registered?"],
+                ["nps_status", "NPS registered?"],
+                ["income_tax_payer", "Income tax payer?"],
+              ] as const
+            ).map(([field, label]) => (
+              <label key={field}>
+                {label}
+                <select
+                  value={
+                    profile[field] === null
+                      ? ""
+                      : profile[field]
+                        ? "true"
+                        : "false"
+                  }
+                  onChange={(event) =>
+                    setProfile({
+                      ...profile,
+                      [field]:
+                        event.target.value === ""
+                          ? null
+                          : event.target.value === "true",
+                    })
+                  }
+                >
+                  <option value="">Not sure / Not provided</option>
+                  <option value="true">Yes</option>
+                  <option value="false">No</option>
+                </select>
+              </label>
+            ))}
+          </div>
+
+          {profileError && (
+            <p className="error-message" role="alert">
+              {profileError}
+            </p>
+          )}
+
+          {profileMessage && (
+            <p className="profile-success" role="status">
+              {profileMessage}
+            </p>
+          )}
+
+          <button
+            className="login-submit"
+            type="submit"
+            disabled={profileSaving}
+          >
+            {profileSaving ? "Saving profile..." : "Save profile"}
+          </button>
+        </form>
       </section>
 
       {/* BENEFITS */}
