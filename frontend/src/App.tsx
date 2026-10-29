@@ -52,6 +52,16 @@ type Benefit = {
   reasons: string[];
 };
 
+type WorkerDocument = {
+  id: number;
+  document_type: string;
+  original_filename: string;
+  mime_type: string;
+  file_size: number;
+  verification_status: string;
+  created_at: string;
+};
+
 type WorkerProfile = {
   age: number | null;
   monthly_income: number | null;
@@ -101,6 +111,14 @@ function WorkerApp() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMessage, setProfileMessage] = useState("");
   const [profileError, setProfileError] = useState("");
+
+  const [documents, setDocuments] = useState<WorkerDocument[]>([]);
+  const [documentType, setDocumentType] = useState("Aadhaar Card");
+  const [documentFile, setDocumentFile] = useState<File | null>(null);
+  const [documentsLoading, setDocumentsLoading] = useState(false);
+  const [documentUploading, setDocumentUploading] = useState(false);
+  const [documentError, setDocumentError] = useState("");
+  const [documentMessage, setDocumentMessage] = useState("");
   
   // -------------------- LOGIN --------------------
 
@@ -219,6 +237,32 @@ function WorkerApp() {
           "Benefits load nahi ho paaye. Thodi der baad retry karo.",
         );
       }
+
+      // 7. Document Vault fetch
+      try {
+        const documentsResponse = await fetch(
+          `${API_URL}/documents`,
+          {
+            headers: {
+              Authorization: `Bearer ${loginData.access_token}`,
+            },
+          },
+        );
+
+        if (!documentsResponse.ok) {
+          throw new Error("Documents load nahi ho paaye.");
+        }
+
+        const documentsData: WorkerDocument[] =
+          await documentsResponse.json();
+
+        setDocuments(documentsData);
+      } catch {
+        setDocuments([]);
+        setDocumentError(
+          "Document Vault load nahi ho paya. Retry karo.",
+        );
+      }
     } catch (err) {
       setError(
         err instanceof TypeError
@@ -235,71 +279,71 @@ function WorkerApp() {
 
   // -------------------- REFRESH DASHBOARD --------------------
 
-async function handleRefresh() {
-  if (!token) return;
+  async function handleRefresh() {
+    if (!token) return;
 
-  setRefreshing(true);
-  setError("");
-  setBenefitsError("");
+    setRefreshing(true);
+    setError("");
+    setBenefitsError("");
 
-  const headers = {
-    Authorization: `Bearer ${token}`,
-  };
+    const headers = {
+      Authorization: `Bearer ${token}`,
+    };
 
-  try {
-    const [dashboardResponse, benefitsResponse] = await Promise.all([
-      fetch(`${API_URL}/dashboard/me`, { headers }),
-      fetch(`${API_URL}/benefits/me`, { headers }),
-    ]);
+    try {
+      const [dashboardResponse, benefitsResponse] = await Promise.all([
+        fetch(`${API_URL}/dashboard/me`, { headers }),
+        fetch(`${API_URL}/benefits/me`, { headers }),
+      ]);
+  
+      if (
+        dashboardResponse.status === 401 ||
+        benefitsResponse.status === 401
+      ) {
+        throw new Error("Session expire ho gaya. Dobara login karo.");
+      }
 
-    if (
-      dashboardResponse.status === 401 ||
-      benefitsResponse.status === 401
-    ) {
-      throw new Error("Session expire ho gaya. Dobara login karo.");
-    }
+      if (!dashboardResponse.ok) {
+        throw new Error("Dashboard refresh nahi ho paya.");
+      }
 
-    if (!dashboardResponse.ok) {
-      throw new Error("Dashboard refresh nahi ho paya.");
-    }
+      const dashboardData: DashboardData =
+        await dashboardResponse.json();
 
-    const dashboardData: DashboardData =
-      await dashboardResponse.json();
+      setDashboard(dashboardData);
 
-    setDashboard(dashboardData);
+      if (!benefitsResponse.ok) {
+        setBenefitsError(
+          "Benefits refresh nahi ho paaye. Thodi der baad retry karo.",
+        );
+      } else {
+        const benefitsData: Benefit[] =
+          await benefitsResponse.json();
 
-    if (!benefitsResponse.ok) {
-      setBenefitsError(
-        "Benefits refresh nahi ho paaye. Thodi der baad retry karo.",
+        setBenefits(benefitsData);
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Dashboard refresh karte waqt problem hui.",
       );
-    } else {
-      const benefitsData: Benefit[] =
-        await benefitsResponse.json();
-
-      setBenefits(benefitsData);
+    } finally {
+      setRefreshing(false);
     }
-  } catch (err) {
-    setError(
-      err instanceof Error
-        ? err.message
-        : "Dashboard refresh karte waqt problem hui.",
-    );
-  } finally {
-    setRefreshing(false);
   }
-}
 
 
-async function handleProfileSave(event: FormEvent<HTMLFormElement>) {
-  event.preventDefault();
+  async function handleProfileSave(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
 
-  if (!token) return;
+    if (!token) return;
 
-  setProfileSaving(true);
-  setProfileMessage("");
-  setProfileError("");
+    setProfileSaving(true);
+    setProfileMessage("");
+    setProfileError("");
 
-  try {
+    try {
     const response = await fetch(`${API_URL}/profile/me`, {
       method: "PUT",
       headers: {
@@ -339,16 +383,195 @@ async function handleProfileSave(event: FormEvent<HTMLFormElement>) {
 
       setBenefits(updatedBenefits);
     }
-  } catch (err) {
+    } catch (err) {
     setProfileError(
       err instanceof Error
         ? err.message
         : "Profile update karte waqt error aaya.",
     );
-  } finally {
+    } finally {
     setProfileSaving(false);
+    }
   }
-}
+
+  async function loadDocuments() {
+    if (!token) return;
+
+    setDocumentsLoading(true);
+    setDocumentError("");
+
+    try {
+      const response = await fetch(`${API_URL}/documents`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Documents load nahi ho paaye.");
+      }
+
+      const data: WorkerDocument[] = await response.json();
+      setDocuments(data);
+    } catch (err) {
+      setDocumentError(
+        err instanceof Error
+          ? err.message
+          : "Documents load karte waqt error aaya.",
+      );
+    } finally {
+      setDocumentsLoading(false);
+    }
+  }
+
+  async function handleDocumentUpload(  
+  event: FormEvent<HTMLFormElement>,
+) {
+  event.preventDefault();
+
+  if (!token || !documentFile) {
+    setDocumentError("Pehle ek file select karo.");
+    return;
+  }
+
+  if (documentFile.size > 5 * 1024 * 1024) {
+    setDocumentError("File size 5 MB se kam honi chahiye.");
+    return;
+  }
+
+  setDocumentUploading(true);
+  setDocumentError("");
+  setDocumentMessage("");
+
+  try {
+    const formData = new FormData();
+
+    formData.append("document_type", documentType);
+    formData.append("file", documentFile);
+
+    const response = await fetch(`${API_URL}/documents/upload`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    const responseData = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(
+        responseData?.detail || "Document upload nahi ho paya.",
+      );
+    }
+
+    setDocumentMessage("Document successfully upload ho gaya!");
+    setDocumentFile(null);
+
+    const fileInput = document.getElementById(
+      "document-file",
+    ) as HTMLInputElement | null;
+
+    if (fileInput) {
+      fileInput.value = "";
+    }
+
+    await loadDocuments();
+  } catch (err) {
+    setDocumentError(
+      err instanceof Error
+        ? err.message
+        : "Upload karte waqt error aaya.",
+    );
+  } finally {
+    setDocumentUploading(false);
+  }
+  }
+
+  async function handleDocumentDownload(documentId: number) {
+    if (!token) return;
+
+    setDocumentError("");
+
+    try {
+      const response = await fetch(
+        `${API_URL}/documents/${documentId}/download`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Document download nahi ho paya.");
+      }
+
+      const blob = await response.blob();
+      const downloadUrl = URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download =
+        documents.find((document) => document.id === documentId)
+          ?.original_filename || "document";
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      URL.revokeObjectURL(downloadUrl);
+    } catch (err) {
+      setDocumentError(
+        err instanceof Error
+          ? err.message
+          : "Download karte waqt error aaya.",
+      );
+    }
+  }
+
+  async function handleDocumentDelete(documentId: number) {
+    if (!token) return;
+
+    const confirmed = window.confirm(
+      "Kya tum ye document permanently delete karna chahte ho?",
+    );
+
+    if (!confirmed) return;
+
+    setDocumentError("");
+    setDocumentMessage("");
+
+    try {
+      const response = await fetch(
+        `${API_URL}/documents/${documentId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      const responseData = await response.json().catch(() => null);
+  
+      if (!response.ok) {
+        throw new Error(
+          responseData?.detail || "Document delete nahi ho paya.",
+        );
+      }
+
+      setDocumentMessage("Document successfully delete ho gaya!");
+
+      await loadDocuments();
+    } catch (err) {
+      setDocumentError(
+        err instanceof Error
+          ? err.message
+          : "Delete karte waqt error aaya.",
+      );
+    }
+  }
   // -------------------- LOGOUT --------------------
 
   function handleLogout() {
@@ -1036,6 +1259,153 @@ async function handleProfileSave(event: FormEvent<HTMLFormElement>) {
             ))}
           </div>
         )}
+      </section>
+
+      {/* DOCUMENT VAULT */}
+
+      <section className="content-section">
+        <div className="item-heading">
+          <div>
+            <h2>Document Vault</h2>
+            <p className="muted">
+              Apne important documents securely manage karo.
+            </p>
+          </div>
+
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={loadDocuments}
+            disabled={documentsLoading}
+          >
+            {documentsLoading ? "Loading..." : "↻ Refresh"}
+          </button>
+        </div>
+
+        <form
+          className="profile-form"
+          onSubmit={handleDocumentUpload}
+        >
+          <div className="profile-fields">
+            <label>
+              Document type
+      
+              <select
+                value={documentType}
+                onChange={(event) =>
+                  setDocumentType(event.target.value)
+                }
+              >
+                <option value="Aadhaar Card">Aadhaar Card</option>
+                <option value="PAN Card">PAN Card</option>
+                <option value="Bank Passbook">Bank Passbook</option>
+                <option value="Driving License">Driving License</option>
+                <option value="Ration Card">Ration Card</option>
+                <option value="Income Certificate">Income Certificate</option>
+                <option value="Other">Other</option>
+              </select>
+            </label>
+
+            <label>
+              Select document
+
+              <input
+                id="document-file"
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png"
+                onChange={(event) =>
+                  setDocumentFile(
+                    event.target.files?.[0] || null,
+                  )
+                }
+                required
+              />
+            </label>
+          </div>
+
+          <p className="muted">
+            Accepted formats: PDF, JPG, PNG. Maximum size: 5 MB.
+          </p>
+
+          {documentError && (
+            <p className="error-message" role="alert">
+              {documentError}
+            </p>
+          )}
+
+          {documentMessage && (
+            <p className="profile-success" role="status">
+              {documentMessage}
+            </p>
+          )}
+
+          <button
+            className="login-submit"
+            type="submit"
+            disabled={documentUploading || !documentFile}
+          >
+            {documentUploading
+              ? "Uploading document..."
+              : "Upload document"}
+          </button>
+        </form>
+
+        <div className="item-list">
+          {documentsLoading ? (
+            <p className="empty-state">
+              Documents load ho rahe hain...
+            </p>
+          ) : documents.length === 0 ? (
+            <p className="empty-state">
+              Abhi koi document upload nahi hua.
+            </p>
+          ) : (
+            documents.map((document) => (
+              <article
+                className="item-card"
+                key={document.id}
+              >
+                <div className="item-heading">
+                  <h3>{document.document_type}</h3>
+      
+                  <span className="status-pill">
+                    {document.verification_status}
+                  </span>
+                </div>
+
+                <p>{document.original_filename}</p>
+      
+                <p className="muted">
+                  {(document.file_size / 1024).toFixed(1)} KB
+                  {" · "}
+                  {new Date(document.created_at).toLocaleDateString()}
+                </p>
+
+                <div className="dashboard-header-actions">
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    onClick={() =>
+                      handleDocumentDownload(document.id)
+                    }
+                  >
+                    Download
+                  </button>
+
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    onClick={() =>
+                      handleDocumentDelete(document.id)
+                    }
+                  >
+                    Delete
+                  </button>
+                </div>
+              </article>
+            ))
+          )}
+        </div>
       </section>
 
       {/* APPLICATIONS */}
