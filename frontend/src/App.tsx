@@ -1,5 +1,5 @@
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import "./App.css";
 import AdminDashboard from "./AdminDashboard";
 
@@ -76,6 +76,24 @@ type WorkerProfile = {
   monthly_income_range: string;
 };
 
+type WorkerGrievance = {
+  id: number;
+  application_id: number | null;
+  subject: string;
+  description: string;
+  status: string;
+  external_reference: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type GrievanceHistory = {
+  id: number;
+  status: string;
+  note: string | null;
+  changed_at: string;
+};
+
 const emptyProfile: WorkerProfile = {
   age: null,
   monthly_income: null,
@@ -120,6 +138,18 @@ function WorkerApp() {
   const [documentError, setDocumentError] = useState("");
   const [documentMessage, setDocumentMessage] = useState("");
   
+
+  const [grievances, setGrievances] = useState<WorkerGrievance[]>([]);
+  const [grievanceSubject, setGrievanceSubject] = useState("");
+  const [grievanceDescription, setGrievanceDescription] = useState("");
+  const [grievanceApplicationId, setGrievanceApplicationId] = useState("");
+  const [grievanceLoading, setGrievanceLoading] = useState(false);
+  const [grievanceSubmitting, setGrievanceSubmitting] = useState(false);
+  const [grievanceError, setGrievanceError] = useState("");
+  const [grievanceMessage, setGrievanceMessage] = useState("");
+  const [grievanceHistory, setGrievanceHistory] = useState<
+  Record<number, GrievanceHistory[]>
+>({});
   // -------------------- LOGIN --------------------
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
@@ -275,6 +305,12 @@ function WorkerApp() {
       setLoading(false);
     }
   }
+  
+  useEffect(() => {
+    if (token) {
+      loadGrievances();
+    }
+  }, [token]);
 
 
   // -------------------- REFRESH DASHBOARD --------------------
@@ -333,6 +369,135 @@ function WorkerApp() {
     }
   }
 
+  async function loadGrievances() {
+    if (!token) return;
+
+    setGrievanceLoading(true);
+    setGrievanceError("");
+
+    try {
+      const response = await fetch(`${API_URL}/grievances`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Grievances load nahi ho paaye.");
+      }
+
+      const data: WorkerGrievance[] = await response.json();
+      setGrievances(data);
+    } catch (error) {
+      setGrievanceError(
+        error instanceof Error
+          ? error.message
+          : "Grievances load karte waqt error aaya.",
+      );
+    } finally {
+      setGrievanceLoading(false);
+    }
+  }
+
+  async function handleGrievanceSubmit(
+    event: FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+
+    if (!token) return;
+
+    setGrievanceSubmitting(true);
+    setGrievanceError("");
+    setGrievanceMessage("");
+
+    const applicationId = grievanceApplicationId.trim()
+      ? Number(grievanceApplicationId)
+      : null;
+
+    if (
+      applicationId !== null &&
+      (!Number.isInteger(applicationId) || applicationId <= 0)
+    ) {
+      setGrievanceError("Valid application ID enter karo.");
+      setGrievanceSubmitting(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/grievances`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          subject: grievanceSubject.trim(),
+          description: grievanceDescription.trim(),
+          application_id: applicationId,
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(
+          data?.detail || "Grievance submit nahi ho paayi.",
+        );
+      }
+
+      setGrievanceMessage(
+        `Grievance successfully submitted! ID: ${data.id}`,
+      );
+
+      setGrievanceSubject("");
+      setGrievanceDescription("");
+      setGrievanceApplicationId("");
+
+      await loadGrievances();
+    } catch (error) {
+      setGrievanceError(
+        error instanceof Error
+          ? error.message
+          : "Submit karte waqt error aaya.",
+      );
+    } finally {
+      setGrievanceSubmitting(false);
+    }
+  }
+
+  async function loadGrievanceHistory(grievanceId: number) {
+    if (!token) return;
+
+    setGrievanceError("");
+
+    try {
+      const response = await fetch(
+        `${API_URL}/grievances/${grievanceId}/history`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Grievance history load nahi ho paayi.");
+      }
+  
+      const data: GrievanceHistory[] = await response.json();
+  
+      setGrievanceHistory((previous) => ({
+        ...previous,
+        [grievanceId]: data,
+      }));
+    } catch (error) {
+      setGrievanceError(
+        error instanceof Error
+          ? error.message
+          : "History load karte waqt error aaya.",
+      );
+    }
+  }
 
   async function handleProfileSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1461,39 +1626,178 @@ function WorkerApp() {
         )}
       </section>
 
-      {/* GRIEVANCES */}
+      {/* GRIEVANCE TRACKING */}
 
       <section className="content-section">
-        <h2>Your grievances</h2>
+        <div className="item-heading">
+          <div>
+            <h2>Grievance Support</h2>
+            <p className="muted">
+              Scheme ya application se related problem report karo.
+            </p>
+          </div>
 
-        {dashboard.grievances.length === 0 ? (
-          <p className="empty-state">
-            Abhi koi grievance listed nahi hai.
-          </p>
-        ) : (
-          <div className="item-list">
-            {dashboard.grievances.map((grievance) => (
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={loadGrievances}
+            disabled={grievanceLoading}
+          >
+            {grievanceLoading ? "Loading..." : "↻ Refresh"}
+          </button>
+        </div>
+
+        <form
+          className="profile-form"
+          onSubmit={handleGrievanceSubmit}
+        >
+          <div className="profile-fields">
+            <label>
+              Subject
+
+              <input
+                value={grievanceSubject}
+                onChange={(event) =>
+                  setGrievanceSubject(event.target.value)
+                }
+                minLength={5}
+                maxLength={200}
+                placeholder="e.g. Application status not updated"
+                required
+              />
+            </label>
+
+            <label>
+              Application ID (optional)
+      
+              <input
+                type="number"
+                min={1}
+                value={grievanceApplicationId}
+                onChange={(event) =>
+                  setGrievanceApplicationId(event.target.value)
+                }
+                placeholder="Enter application ID"
+              />
+            </label>
+          </div>
+
+          <label>
+            Description
+
+            <textarea
+              value={grievanceDescription}
+              onChange={(event) =>
+                setGrievanceDescription(event.target.value)
+              }
+              minLength={10}
+              maxLength={3000}
+              rows={4}
+              placeholder="Explain your issue..."
+              required
+            />
+          </label>
+
+          {grievanceError && (
+            <p className="error-message" role="alert">
+              {grievanceError}
+            </p>
+          )}
+
+          {grievanceMessage && (
+            <p className="profile-success" role="status">
+              {grievanceMessage}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            className="login-submit"
+            disabled={grievanceSubmitting}
+          >
+            {grievanceSubmitting
+              ? "Submitting..."
+              : "Submit Grievance"}
+          </button>
+        </form>
+
+        <div className="item-list">
+          {grievanceLoading ? (
+            <p className="empty-state">
+              Grievances load ho rahi hain...
+            </p>
+          ) : grievances.length === 0 ? (
+            <p className="empty-state">
+              Abhi koi grievance submit nahi hui.
+            </p>
+          ) : (
+            grievances.map((grievance) => (
               <article
                 className="item-card"
                 key={grievance.id}
               >
                 <div className="item-heading">
                   <h3>{grievance.subject}</h3>
-
+      
                   <span className="status-pill">
-                    {grievance.status.replaceAll("_", " ")}
+                    {grievance.status}
                   </span>
                 </div>
+      
+                <p>{grievance.description}</p>
 
                 <p className="muted">
-                  {grievance.days_pending === null
-                    ? "Grievance closed."
-                    : `Pending for ${grievance.days_pending} day(s)`}
+                  Grievance ID: {grievance.id}
+                  {" · "}
+                  {new Date(
+                    grievance.created_at,
+                  ).toLocaleDateString()}
                 </p>
+
+                {grievance.external_reference && (
+                  <p>
+                    Reference: {grievance.external_reference}
+                  </p>
+                )}
+
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() =>
+                    loadGrievanceHistory(grievance.id)
+                  }
+                >
+                  View Status History
+                </button>
+
+                {grievanceHistory[grievance.id] && (
+                  <div className="item-list">
+                    {grievanceHistory[grievance.id].map(
+                      (history) => (
+                        <div
+                          className="item-card"
+                          key={history.id}
+                        >
+                          <strong>{history.status}</strong>
+
+                          {history.note && (
+                            <p>{history.note}</p>
+                          )}
+
+                          <p className="muted">
+                            {new Date(
+                              history.changed_at,
+                            ).toLocaleString()}
+                          </p>
+                        </div>
+                      ),
+                    )}
+                  </div>
+                )}
               </article>
-            ))}
-          </div>
-        )}
+            ))
+          )}
+        </div>
       </section>
     </main>
   );
