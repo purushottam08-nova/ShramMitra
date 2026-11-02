@@ -29,3 +29,74 @@ button:focus-visible {
   outline: 2px solid #6aa887;
   outline-offset: 3px;
 }
+
+.application-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+}
+
+.application-next-action {
+  margin: 16px 0;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--surface-secondary, #f5f5f5);
+}
+
+.application-next-action p {
+  margin: 6px 0 0;
+  line-height: 1.6;
+}
+
+.application-history {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color, #e5e5e5);
+}
+
+.application-timeline {
+  margin: 16px 0 0;
+  padding-left: 22px;
+}
+
+.application-timeline li {
+  padding: 0 0 18px 8px;
+}
+
+.application-timeline li::marker {
+  color: var(--primary-color, #6b5ce7);
+}
+
+.application-timeline p {
+  margin: 5px 0;
+  line-height: 1.5;
+}
+
+@media (max-width: 600px) {
+  .application-meta {
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .application-next-action {
+    padding: 12px;
+  }
+}
+
+.notification-card {
+  transition: opacity 180ms ease;
+}
+
+.notification-read {
+  opacity: 0.75;
+}
+
+.notification-unread {
+  border-left: 4px solid var(--primary-color, #6b5ce7);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notification-card {
+    transition: none;
+  }
+}

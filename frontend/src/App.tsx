@@ -2,6 +2,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import "./App.css";
 import AdminDashboard from "./AdminDashboard";
+import Notifications from "./components/Notifications";
 
 const API_URL = "http://127.0.0.1:8000";
 
@@ -94,6 +95,16 @@ type GrievanceHistory = {
   changed_at: string;
 };
 
+type WorkerApplication = {
+  id: number;
+  scheme_name: string;
+  application_number?: string | null;
+  status: string;
+  applied_at?: string | null;
+  updated_at?: string | null;
+  next_action?: string | null;
+};
+
 const emptyProfile: WorkerProfile = {
   age: null,
   monthly_income: null,
@@ -137,6 +148,10 @@ function WorkerApp() {
   const [documentUploading, setDocumentUploading] = useState(false);
   const [documentError, setDocumentError] = useState("");
   const [documentMessage, setDocumentMessage] = useState("");
+
+  const [applications, setApplications] = useState<WorkerApplication[]>([]);
+  const [applicationsLoading, setApplicationsLoading] = useState(false);
+  const [applicationsError, setApplicationsError] = useState("");
   
 
   const [grievances, setGrievances] = useState<WorkerGrievance[]>([]);
@@ -148,8 +163,38 @@ function WorkerApp() {
   const [grievanceError, setGrievanceError] = useState("");
   const [grievanceMessage, setGrievanceMessage] = useState("");
   const [grievanceHistory, setGrievanceHistory] = useState<
-  Record<number, GrievanceHistory[]>
->({});
+    Record<number, GrievanceHistory[]>
+  >({});
+
+  const loadApplications = async () => {
+    if (!token) return;
+
+    setApplicationsLoading(true);
+    setApplicationsError("");
+
+    try {
+      const response = await fetch(`${API_URL}/applications/me`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Applications load nahi ho paayi.");
+      }
+
+      const data = await response.json();
+      setApplications(Array.isArray(data) ? data : data.items ?? []);
+    } catch (error) {
+      setApplicationsError(
+        error instanceof Error ? error.message : "Something went wrong."
+      );
+    } finally {
+      setApplicationsLoading(false);
+    }
+  };
+
+  
   // -------------------- LOGIN --------------------
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
@@ -309,6 +354,7 @@ function WorkerApp() {
   useEffect(() => {
     if (token) {
       loadGrievances();
+      loadApplications();
     }
   }, [token]);
 
@@ -1576,55 +1622,79 @@ function WorkerApp() {
       {/* APPLICATIONS */}
 
       <section className="content-section">
-        <h2>Your applications</h2>
+       <div className="item-heading">
+         <div>
+           <h2>Application Tracking</h2>
+           <p className="muted">
+             Track your scheme applications and their current status.
+           </p>
+         </div>
 
-        {dashboard.applications.length === 0 ? (
-          <p className="empty-state">
-            Abhi koi application track nahi ho rahi.
-          </p>
-        ) : (
-          <div className="item-list">
-            {dashboard.applications.map((application) => (
-              <article
-                className="item-card"
-                key={application.id}
-              >
-                <div className="item-heading">
-                  <h3>{application.scheme_name}</h3>
+         <button
+           className="secondary-button"
+           onClick={loadApplications}
+           disabled={applicationsLoading}
+         >
+           {applicationsLoading ? "Refreshing..." : "Refresh"}
+         </button>
+       </div>
 
-                  <span className="status-pill">
-                    {application.status.replaceAll("_", " ")}
-                  </span>
-                </div>
+       {applicationsError && (
+         <p className="error-message">{applicationsError}</p>
+       )}
 
-                <p className="muted">
-                  {application.scheme_category}
-                </p>
+       {applicationsLoading ? (
+         <p className="muted">Loading applications...</p>
+       ) : applications.length === 0 ? (
+         <div className="empty-state">
+           <h3>No applications yet</h3>
+           <p className="muted">
+             Your scheme applications will appear here once you apply.
+           </p>
+         </div>
+       ) : (
+         <div className="item-list">
+           {applications.map((application) => (
+             <article className="item-card" key={application.id}>
+               <div className="item-heading">
+                 <div>
+                   <h3>{application.scheme_name}</h3>
+                   <p className="muted">
+                     Application ID:{" "}
+                     {application.application_number || application.id}
+                   </p>
+                 </div>
+     
+                 <span className="status-pill">
+                   {application.status.replaceAll("_", " ")}
+                 </span>
+               </div>
 
-                <p className="muted">
-                  Reference:{" "}
-                  {application.reference_number || "Not available"}
-                </p>
+               <p className="muted">
+                 Applied on:{" "}
+                 {application.applied_at
+                   ? new Date(application.applied_at).toLocaleDateString("en-IN")
+                   : "Not available"}
+               </p>
 
-                <p>
-                  {application.days_in_current_status === null
-                    ? "Application status is final."
-                    : `${application.days_in_current_status} day(s) in current status`}
-                </p>
-
-                <div className="next-action">
-                  <strong>Next action</strong>
-
-                  <p>
-                    {application.next_action ||
-                      "Check official application updates."}
-                  </p>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
+               <p className="muted">
+                 Last updated:{" "}
+                 {application.updated_at
+                   ? new Date(application.updated_at).toLocaleDateString("en-IN")
+                   : "Not available"}
+               </p>
+     
+               {application.next_action && (
+                 <div>
+                   <strong>Next action</strong>
+                   <p>{application.next_action}</p>
+                 </div>
+               )}
+             </article>
+           ))}
+         </div>
+       )}
+     </section>
 
       {/* GRIEVANCE TRACKING */}
 
@@ -1798,6 +1868,12 @@ function WorkerApp() {
             ))
           )}
         </div>
+      </section>
+
+      {/* NOTIFICATIONS */}
+
+      <section className="content-section">
+        <Notifications token={token} />
       </section>
     </main>
   );
