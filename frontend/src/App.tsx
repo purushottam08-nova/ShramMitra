@@ -1,8 +1,8 @@
-
 import { useEffect, useState, type FormEvent } from "react";
 import "./App.css";
 import AdminDashboard from "./AdminDashboard";
 import Notifications from "./components/Notifications";
+import Recommendations from "./components/Recommendations";
 
 const API_URL = "http://127.0.0.1:8000";
 
@@ -1868,6 +1868,12 @@ function WorkerApp() {
             ))
           )}
         </div>
+      </section>
+
+      {/* SCHEME RECOMMENDATIONS */}
+
+      <section className="content-section">
+         <Recommendations token={token} />
       </section>
 
       {/* NOTIFICATIONS */}
