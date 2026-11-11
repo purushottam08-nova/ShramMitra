@@ -1,4 +1,3 @@
-
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -9,11 +8,13 @@ from app.core.permissions import require_admin
 from app.models.scheme import Scheme
 from app.models.scheme_verification_history import SchemeVerificationHistory
 from app.models.user import User
-from app.schemas.scheme_verification import SchemeVerificationRequest
+from app.schemas.scheme_verification import (
+    SchemeVerificationRequest,
+    SchemeRejectionRequest,
+)
 
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
-
 
 @router.post("/schemes/{scheme_id}/verify")
 def verify_scheme(
@@ -112,4 +113,87 @@ def get_scheme_verification_history(
             }
             for history in histories
         ],
+    }
+
+
+@router.get("/schemes")
+def get_all_schemes(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    schemes = (
+        db.query(Scheme)
+        .order_by(Scheme.created_at.desc(), Scheme.id.desc())
+        .all()
+    )
+
+    return {
+        "total": len(schemes),
+        "schemes": [
+            {
+                "id": scheme.id,
+                "name": scheme.name,
+                "description": scheme.description,
+                "category": scheme.category,
+                "level": scheme.level,
+                "source_url": scheme.source_url,
+                "verification_status": scheme.verification_status,
+                "last_verified_at": scheme.last_verified_at,
+                "version": scheme.version,
+                "status": scheme.status,
+            }
+            for scheme in schemes
+        ],
+    }
+
+
+@router.post("/schemes/{scheme_id}/reject")
+def reject_scheme(
+    scheme_id: int,
+    request: SchemeRejectionRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    scheme = db.query(Scheme).filter(
+        Scheme.id == scheme_id
+    ).first()
+
+    if scheme is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Scheme not found",
+        )
+
+    previous_status = scheme.verification_status
+    scheme.verification_status = "REJECTED"
+
+    history = SchemeVerificationHistory(
+        scheme_id=scheme.id,
+        verifier_id=current_user.id,
+        previous_status=previous_status,
+        new_status="REJECTED",
+        source_url=scheme.source_url,
+        version=scheme.version,
+        notes=request.notes,
+        verified_at=datetime.now(timezone.utc).replace(tzinfo=None),
+    )
+
+    db.add(history)
+
+    try:
+        db.commit()
+        db.refresh(scheme)
+        db.refresh(history)
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not save scheme rejection",
+        )
+
+    return {
+        "message": "Scheme rejected successfully",
+        "scheme_id": scheme.id,
+        "verification_status": scheme.verification_status,
+        "history_id": history.id,
     }

@@ -19,3 +19,18 @@ class SchemeVerificationRequest(BaseModel):
 
         return value
 
+
+class SchemeRejectionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    notes: str = Field(min_length=10, max_length=2000)
+
+    @field_validator("notes")
+    @classmethod
+    def validate_notes(cls, value: str) -> str:
+        value = value.strip()
+
+        if not value:
+            raise ValueError("Rejection reason cannot be empty")
+
+        return value
