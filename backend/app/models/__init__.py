@@ -13,6 +13,7 @@ from app.models.application_status_history import ApplicationStatusHistory
 from app.models.grievance import Grievance
 from app.models.grievance_status_history import GrievanceStatusHistory 
 from app.models.scheme_verification_history import SchemeVerificationHistory
+from app.models.notification import Notification
 
 __all__ = [
     "User",
