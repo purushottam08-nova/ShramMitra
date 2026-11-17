@@ -16,6 +16,8 @@ from app.api.dashboard import router as dashboard_router
 from fastapi.middleware.cors import CORSMiddleware
 from app.api import admin
 from app.api import recommendations
+from app.api.notifications import router as notifications_router
+from app.models.notification import Notification
 
 app = FastAPI(title="ShramMitra API")
 app.add_middleware(
@@ -35,6 +37,7 @@ app.include_router(documents_router)
 app.include_router(profile_router)
 app.include_router(admin.router)
 app.include_router(recommendations.router)
+app.include_router(notifications_router)
 
 @app.get("/")
 def root():

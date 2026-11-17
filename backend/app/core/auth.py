@@ -1,3 +1,7 @@
+
+import base64
+import binascii
+
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
@@ -13,12 +17,45 @@ bearer_scheme = HTTPBearer()
 
 def get_db():
     db = SessionLocal()
-
     try:
         yield db
     finally:
         db.close()
 
+
+def validate_canonical_jwt(token: str) -> bool:
+    """
+    Reject malformed or non-canonical Base64URL JWT segments.
+    This prevents alternate encodings of the same signature.
+    """
+    parts = token.split(".")
+
+    if len(parts) != 3:
+        return False
+
+    try:
+        for part in parts:
+            padded_part = part + ("=" * (-len(part) % 4))
+
+            decoded = base64.b64decode(
+                padded_part,
+                altchars=b"-_",
+                validate=True,
+            )
+
+            canonical = (
+                base64.urlsafe_b64encode(decoded)
+                .rstrip(b"=")
+                .decode("ascii")
+            )
+
+            if canonical != part:
+                return False
+
+    except (binascii.Error, ValueError, UnicodeError):
+        return False
+
+    return True
 
 
 def get_current_user(
@@ -32,6 +69,9 @@ def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
+    if not validate_canonical_jwt(token):
+        raise credentials_exception
 
     try:
         payload = jwt.decode(

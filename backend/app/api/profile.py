@@ -1,3 +1,4 @@
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -12,7 +13,6 @@ router = APIRouter(
     prefix="/profile",
     tags=["Worker Profile"],
 )
-
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
@@ -58,7 +58,6 @@ def create_profile(
     }
 
 
-
 @router.get("/me")
 def get_my_profile(
     current_user: User = Depends(get_current_user),
@@ -72,7 +71,7 @@ def get_my_profile(
 
     if not profile:
         raise HTTPException(
-            status_code=404,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="Worker profile not found",
         )
 
@@ -84,7 +83,6 @@ def get_my_profile(
         "employment_type": profile.employment_type,
         "monthly_income_range": profile.monthly_income_range,
     }
-
 
 
 @router.put("/me")
@@ -101,10 +99,10 @@ def update_my_profile(
 
     if not profile:
         raise HTTPException(
-            status_code=404,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="Worker profile not found",
         )
-    
+
     profile.state = profile_data.state
     profile.district = profile_data.district
     profile.worker_type = profile_data.worker_type
@@ -122,42 +120,5 @@ def update_my_profile(
 
     return {
         "message": "Worker profile updated successfully",
-    }
-
-
-
-@router.post("", status_code=status.HTTP_201_CREATED)
-def create_profile(
-    profile_data: WorkerProfileRequest,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    existing_profile = (
-        db.query(WorkerProfile)
-        .filter(WorkerProfile.user_id == current_user.id)
-        .first()
-    )
-
-    if existing_profile:
-        raise HTTPException(
-            status_code=409,
-            detail="Worker profile already exists",
-        )
-
-    profile = WorkerProfile(
-        user_id=current_user.id,
-        state=profile_data.state,
-        district=profile_data.district,
-        worker_type=profile_data.worker_type,
-        employment_type=profile_data.employment_type,
-        monthly_income_range=profile_data.monthly_income_range,
-    )
-
-    db.add(profile)
-    db.commit()
-    db.refresh(profile)
-
-    return {
-        "message": "Worker profile created successfully",
         "profile_id": profile.id,
     }
