@@ -1,3 +1,4 @@
+
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -12,9 +13,11 @@ from app.schemas.scheme_verification import (
     SchemeVerificationRequest,
     SchemeRejectionRequest,
 )
+from app.services.notifications import notify_all_workers
 
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
+
 
 @router.post("/schemes/{scheme_id}/verify")
 def verify_scheme(
@@ -52,9 +55,21 @@ def verify_scheme(
     db.add(history)
 
     try:
+        if previous_status != "VERIFIED" and scheme.status == "ACTIVE":
+            notify_all_workers(
+                db=db,
+                title="New verified government scheme",
+                message=(
+                    f"{scheme.name} has been verified and is now "
+                    "available for eligibility checking."
+                ),
+                notification_type="SCHEME",
+            )
+
         db.commit()
         db.refresh(scheme)
         db.refresh(history)
+
     except Exception:
         db.rollback()
         raise HTTPException(
@@ -70,6 +85,7 @@ def verify_scheme(
         "verified_at": scheme.last_verified_at,
         "history_id": history.id,
     }
+
 
 @router.get("/schemes/{scheme_id}/verification-history")
 def get_scheme_verification_history(
@@ -184,6 +200,7 @@ def reject_scheme(
         db.commit()
         db.refresh(scheme)
         db.refresh(history)
+
     except Exception:
         db.rollback()
         raise HTTPException(

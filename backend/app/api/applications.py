@@ -1,3 +1,4 @@
+
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -14,6 +15,7 @@ from app.schemas.application import (
     ApplicationStatusUpdateRequest,
 )
 from app.services.application_status import get_application_summary
+from app.services.notifications import create_notification
 
 
 router = APIRouter(
@@ -55,20 +57,31 @@ def create_application(
         application_date=datetime.utcnow(),
     )
 
-    db.add(application)
+    try:
+        db.add(application)
+        db.flush()
 
-    db.flush()
+        history = ApplicationStatusHistory(
+            application_id=application.id,
+            status="SUBMITTED",
+            note="Application submitted",
+        )
+        db.add(history)
 
-    history = ApplicationStatusHistory(
-        application_id=application.id,
-        status="SUBMITTED",
-        note="Application submitted",
-    )
+        create_notification(
+            db=db,
+            user_id=current_user.id,
+            title="Application submitted",
+            message=f"Your application for {scheme.name} has been submitted successfully.",
+            notification_type="APPLICATION",
+        )
 
-    db.add(history)
+        db.commit()
+        db.refresh(application)
 
-    db.commit()
-    db.refresh(application)
+    except Exception:
+        db.rollback()
+        raise
 
     return application
 
@@ -89,12 +102,8 @@ def get_my_applications(
 
     for application in applications:
         item = ApplicationResponse.model_validate(application)
-
         summary = get_application_summary(application)
-
-        results.append(
-            item.model_copy(update=summary)
-        )
+        results.append(item.model_copy(update=summary))
 
     return results
 
@@ -124,25 +133,43 @@ def update_application_status(
             detail="Application not found",
         )
 
+    previous_status = application.status
     application.status = data.status
 
-    history = ApplicationStatusHistory(
-        application_id=application.id,
-        status=data.status,
-        note=data.note,
-    )
+    try:
+        if previous_status != data.status:
+            history = ApplicationStatusHistory(
+                application_id=application.id,
+                status=data.status,
+                note=data.note,
+            )
+            db.add(history)
 
-    db.add(history)
+            scheme_name = application.scheme.name
 
-    db.commit()
-    db.refresh(application)
+            create_notification(
+                db=db,
+                user_id=current_user.id,
+                title="Application status updated",
+                message=(
+                    f"Your application for {scheme_name} "
+                    f"has changed from {previous_status} to {data.status}."
+                    + (f" Update: {data.note}" if data.note else "")
+                ),
+                notification_type="APPLICATION",
+            )
+
+        db.commit()
+        db.refresh(application)
+
+    except Exception:
+        db.rollback()
+        raise
 
     return application
 
 
-@router.get(
-    "/{application_id}/history",
-)
+@router.get("/{application_id}/history")
 def get_application_history(
     application_id: int,
     db: Session = Depends(get_db),
@@ -163,16 +190,11 @@ def get_application_history(
             detail="Application not found",
         )
 
-    history = (
+    return (
         db.query(ApplicationStatusHistory)
         .filter(
-            ApplicationStatusHistory.application_id
-            == application.id
+            ApplicationStatusHistory.application_id == application.id
         )
-        .order_by(
-            ApplicationStatusHistory.changed_at.asc()
-        )
+        .order_by(ApplicationStatusHistory.changed_at.asc())
         .all()
     )
-
-    return history
