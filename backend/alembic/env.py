@@ -20,6 +20,7 @@ from app.models import (
     SchemeWorkerType,
     SchemeRule,
     SchemeVerificationHistory,
+    Notification,
 )
 
 
