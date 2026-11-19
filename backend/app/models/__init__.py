@@ -30,4 +30,5 @@ __all__ = [
     "Grievance",
     "GrievanceStatusHistory",
     "SchemeVerificationHistory",
+    "Notification"
 ]
