@@ -3,8 +3,9 @@ import "./App.css";
 import AdminDashboard from "./AdminDashboard";
 import Notifications from "./components/Notifications";
 import Recommendations from "./components/Recommendations";
+import { API_BASE_URL } from "./config/api";
 
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = API_BASE_URL;
 
 // -------------------- TYPES --------------------
 

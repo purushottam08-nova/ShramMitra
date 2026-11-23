@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+import { apiUrl } from "../config/api"; 
 
 type Notification = {
   id: number;
@@ -25,7 +24,7 @@ export default function Notifications({ token }: Props) {
     setError("");
 
     try {
-      const response = await fetch(`${API_URL}/notifications`, {
+      const response = await fetch(`${apiUrl("/notifications")}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -50,7 +49,7 @@ export default function Notifications({ token }: Props) {
   const markAsRead = async (notificationId: number) => {
     try {
       const response = await fetch(
-        `${API_URL}/notifications/${notificationId}/read`,
+        `${apiUrl(`/notifications/${notificationId}/read`)}`,
         {
           method: "PATCH",
           headers: {
