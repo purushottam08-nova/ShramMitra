@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
+import { apiUrl } from "../config/api";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 type Application = {
   id: number;
@@ -51,7 +51,7 @@ export default function ApplicationTracking({ token }: Props) {
     setError("");
 
     try {
-      const response = await fetch(`${API_URL}/applications/me`, {
+      const response = await fetch(`${apiUrl("/applications/me")}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -78,7 +78,7 @@ export default function ApplicationTracking({ token }: Props) {
 
     try {
       const response = await fetch(
-        `${API_URL}/applications/${applicationId}/history`,
+        `${apiUrl(`/applications/${applicationId}/history`)}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

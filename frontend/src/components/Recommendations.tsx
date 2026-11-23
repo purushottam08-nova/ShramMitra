@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
+import { apiUrl } from "../config/api";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 type Recommendation = {
   scheme_id: number;
@@ -22,7 +22,7 @@ export default function Recommendations({ token }: Props) {
   useEffect(() => {
     const loadRecommendations = async () => {
       try {
-        const response = await fetch(`${API_URL}/recommendations/me`, {
+        const response = await fetch(`${apiUrl("/recommendations/me")}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
